@@ -115,9 +115,12 @@ jobs:
         if: inputs.mode == 'firmware'
         run: |
           set -euo pipefail
-          patch=device/firmware/mu-silicium-unixnu-integration.patch
+          patch=$PWD/device/firmware/mu-silicium-unixnu-integration.patch
           [ -f "$patch" ] || { echo "::error::$patch missing"; exit 1; }
           sha256sum "$patch"
+          # `git -C Mu-Silicium apply` resolves the patch name inside that repository,
+          # so the path has to be absolute (a relative one fails with
+          # "can't open patch ...: No such file or directory" after -C).
           git -C Mu-Silicium apply --check "$patch"
           git -C Mu-Silicium apply "$patch"
           git -C Mu-Silicium --no-pager diff --stat

@@ -33,7 +33,8 @@ procedure = ["Fill board.toml [board] [components] [kernel] [kernel.prelink] [fi
 findings = ["Upstream registers all three enchilada repositories as format 1 legacy, so a format 2 device repository must be created rather than migrated in place.",
   "Format 2 key names differ from the skeleton draft: [device_tree] takes source/include_dirs (not path), [kernel] patch_series is a list of series files (a bare string is iterated character by character by scripts/unixnu/patches.py:12), and [package] unixnu plus [package.defconfig] are required by templates/package.sh and scripts/unixnu/config.py:154-159 [DOC]",
   "A board.toml that restates [kernel.prelink] roots or kernel replaces the 31 roots and the kernel path the OS profile supplies, because profiles.load() merges dicts per key; the skeleton therefore sets only slide and early_security_init [DOC]",
-  "board.toml must carry schema_version = 2: scripts/unixnu/config.py:127 defaults to 1 and then loads a legacy board, which silently skips the whole device-tree and payload path [DOC]",]
+  "board.toml must carry schema_version = 2: scripts/unixnu/config.py:127 defaults to 1 and then loads a legacy board, which silently skips the whole device-tree and payload path [DOC]",
+  "The package workflow under .github/ runs the device repository on a GitHub macOS runner because no local host has Xcode or compression_tool: the check mode passed in 1m42s and the check-deps mode passed after downloading the 4.7 GiB IPSW and decompressing its kernelcache [HOST]",]
 completion = ["All source pins resolve; every selected component has a record; status shows the intended overrides and patch order."]
 limits = ["Blocked on a Linux or macOS build host (Windows native builds are unsupported) and on git for pinning."]
 next_action = ["Decide between the official format 2 route (build the SDM845 SoC layer) and the community format 1 baseline plus minimal completion."]

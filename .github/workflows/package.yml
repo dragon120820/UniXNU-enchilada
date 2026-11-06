@@ -187,6 +187,9 @@ jobs:
               # kernelcache, which is also what `check-deps` proves works.
               cd ../UniXNU
               python3 ./unixnu fetch --device ../device
+              # The kernel step needs a selected configuration; `defconfig` records it in
+              # out/state.json, which `build kernel` then reads back.
+              python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
               python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE"
               ;;
             package)

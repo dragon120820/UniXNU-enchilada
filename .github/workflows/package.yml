@@ -163,6 +163,12 @@ jobs:
         working-directory: device
         env:
           UNIXNU_UNIQUE_CHIP_ID: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
+          # scripts/prepare-xnu-source.py restores 26 DriverKit headers through the
+          # GitHub contents API. Anonymous calls share a per-address quota that
+          # hosted runners exhaust (HTTP 403, observed on the fourth kernel run),
+          # so hand it the workflow token. It is sent to api.github.com and
+          # raw.githubusercontent.com only.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           case "$MODE" in
             check)

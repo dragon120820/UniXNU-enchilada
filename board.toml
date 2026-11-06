@@ -186,6 +186,11 @@ BUILDID_STRING = "enchilada-bringup"
 ENABLE_SECUREBOOT = "0"
 MEMORY_PROTECTION = "TRUE"
 SHIP_MODE = "FALSE"
+# Gate the UniXNU modules from the companion Mu-Silicium patch.
+# firmware.py forwards [firmware.defines] via `build -D KEY=VALUE`,
+# overriding the DSC's UNIXNU_PAYLOAD = 0 default (same channel as
+# FD_BASE/FD_SIZE/FD_BLOCKS).
+UNIXNU_PAYLOAD = "1"
 
 [bootimg]
 pagesize = 4096

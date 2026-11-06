@@ -1,0 +1,59 @@
+diff --git a/Platforms/OnePlus/enchiladaPkg/enchilada.dsc b/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
+--- a/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
++++ b/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
+@@ -24,6 +24,7 @@
+   SKUID_IDENTIFIER               = DEFAULT
+   FLASH_DEFINITION               = enchiladaPkg/enchilada.fdf
+   USE_CUSTOM_DISPLAY_DRIVER      = 1
++  UNIXNU_PAYLOAD                 = 0
+ 
+ !include NapaliPkg/NapaliPkg.dsc.inc
+ 
+diff --git a/Platforms/OnePlus/enchiladaPkg/enchilada.dsc b/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
+--- a/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
++++ b/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
+@@ -71,6 +71,11 @@
+   #
+   ConfigurationMapLib|enchiladaPkg/Library/ConfigurationMapLib/ConfigurationMapLib.inf
+ 
++!if $(UNIXNU_PAYLOAD) == 1
++  # UniXNU boot-manager core; supplied by the device build tree's package/.
++  UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
++!endif
++
+ [Components]
+   #
+   # ACPI Tables
+diff --git a/Platforms/OnePlus/enchiladaPkg/enchilada.dsc b/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
+--- a/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
++++ b/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
+@@ -76,3 +76,12 @@
+   # ACPI Tables
+   #
+   enchilada/AcpiTables.inf
++
++!if $(UNIXNU_PAYLOAD) == 1
++  # UniXNU loader, ramdisk registrar and Darwin handoff.  The FV-side
++  # counterparts are added to Include/DXE.inc by this same patch.
++  UniXNUPkg/Application/UniXNU/UniXNU.inf
++  UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
++  UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
++  DarwinBootPkg/Driver/DarwinBoot.inf
++!endif
+diff --git a/Platforms/OnePlus/enchiladaPkg/Include/DXE.inc b/Platforms/OnePlus/enchiladaPkg/Include/DXE.inc
+--- a/Platforms/OnePlus/enchiladaPkg/Include/DXE.inc
++++ b/Platforms/OnePlus/enchiladaPkg/Include/DXE.inc
+@@ -85,4 +85,13 @@
+   INF Binaries/enchilada/QcomPkg/Drivers/HashDxe/HashDxe.inf
+   INF Binaries/enchilada/QcomPkg/Drivers/RNGDxe/RngDxe.inf
+ 
++!if $(UNIXNU_PAYLOAD) == 1
++  # DiskIoDxe / PartitionDxe / Fat / EnglishDxe are already unconditional
++  # at lines 42-45; only the UniXNU-specific modules are gated here.
++  INF UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
++  INF UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
++  INF UniXNUPkg/Application/UniXNU/UniXNU.inf
++  INF DarwinBootPkg/Driver/DarwinBoot.inf
++!endif
++
+   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf

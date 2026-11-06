@@ -37,7 +37,9 @@ findings = ["Upstream registers all three enchilada repositories as format 1 leg
   "The package workflow under .github/ runs the device repository on a GitHub macOS runner because no local host has Xcode or compression_tool: the check mode passed in 1m42s and the check-deps mode passed after downloading the 4.7 GiB IPSW and decompressing its kernelcache [HOST]",
   "The kernel mode needs the workflow token, not just a macOS host: scripts/prepare-xnu-source.py restores 26 DriverKit headers through the anonymous GitHub contents API, which returned HTTP 403 rate limit exceeded on the fourth run, so the preflight step now exports GITHUB_TOKEN [HOST]",
   "profiles.load() merges dicts per key but replaces ordinary arrays, so board.toml must repeat the complete arch, SoC, OS and device lists: a two-entry patch_series dropped all 56 arm64 patches and 3 IPSW patches, and a one-entry config_fragments dropped arch:configs/common.config. The first kernel run failed on make_symbol_aliasing.sh looking for availability.pl inside the Xcode SDK, which patches/xnu/local-availability.patch exists to fix; the check now reports 60 patches instead of 0 [DOC]",
-  "kernel.archives has the same replace-not-append rule and archive_plan() also rejects a selected component that no component: entry names: selecting RamBlock without adding it to archives failed the second kernel run with [kernel] archives needs component entries for: RamBlock, so board.toml now repeats the eight arch entries and appends component:RamBlock [SRC]",]
+  "kernel.archives has the same replace-not-append rule and archive_plan() also rejects a selected component that no component: entry names: selecting RamBlock without adding it to archives failed the second kernel run with [kernel] archives needs component entries for: RamBlock, so board.toml now repeats the eight arch entries and appends component:RamBlock [SRC]",
+  "The firmware stage does not need the 41 proprietary inputs published anywhere: Mu-Silicium and its Device-Binaries submodule are public repositories, and Device-Binaries HEAD equals the pinned 9f4dbfd7, so a CI job can clone exactly what upstream already serves. The workflow therefore gained a firmware mode that checks out Project-Silicium/Mu-Silicium at 8471e47f, applies the UniXNU payload patch in the checkout only, and runs unixnu build firmware [HOST]",
+  "UNIXNU_PAYLOAD = \"1\" reaches the DSC through [firmware.defines], because firmware.py:38-39 forwards that table as build -D KEY=VALUE and a command-line -D overrides the DSC default; the workflow asserts board.toml carries the key so a firmware built without the payload cannot pass silently [SRC]",]
 completion = ["All source pins resolve; every selected component has a record; status shows the intended overrides and patch order."]
 limits = ["Blocked on a Linux or macOS build host (Windows native builds are unsupported) and on git for pinning."]
 next_action = ["Decide between the official format 2 route (build the SDM845 SoC layer) and the community format 1 baseline plus minimal completion."]
@@ -47,7 +49,7 @@ evidence = []
 id = "firmware"
 status = "planned"
 components = []
-paths = ["proprietary-files.txt", "scripts/check-*.py", "scripts/extract-*.py"]
+paths = ["proprietary-files.txt", "scripts/check-*.py", "scripts/extract-*.py", "firmware/**"]
 inputs = [
   "Candidate: Project-Silicium/Mu-Silicium commit 8471e47f5248ebbffc2e6196b683204163efe155; platform package Platforms/OnePlus/enchiladaPkg (10 files) [MU].",
   "DSC: PLATFORM_GUID F8A6C376-C5D3-4F61-B911-CE778BCB5DEB, USE_CUSTOM_DISPLAY_DRIVER=1, includes NapaliPkg/NapaliPkg.dsc.inc [MU].",
@@ -60,10 +62,13 @@ inputs = [
 ]
 configuration = ["Record the firmware defines: DEVICE_MODEL=enchilada, ENABLE_SECUREBOOT=0, MEMORY_PROTECTION=TRUE, SHIP_MODE=FALSE."]
 procedure = ["Build via DeviceBuild.py on a host with git (build_uefi.py runs submodule update plus four git apply steps)."]
-findings = ["Neither UEFI candidate contains any UniXNU, DarwinBoot or initrd integration; that work is entirely ours to add."]
+findings = ["Neither UEFI candidate contains any UniXNU, DarwinBoot or initrd integration; that work is entirely ours to add.",
+  "The integration gap is four INF plus one library mapping, not a rewrite: enchilada.dsc [Components] appends only enchilada/AcpiTables.inf while SiliciumPkg.dsc.inc:379 already supplies SEC, the DXE core and the runtime services, and same-named sections merge under EDK II semantics [MU]",
+  "FdtLib and HobLib need no board-level mapping: enchilada.dsc:28 includes NapaliPkg.dsc.inc, which includes QcomPkg.dsc.inc, which includes SiliciumPkg.dsc.inc, where :322 maps FdtLib and :184 maps HobLib. Only UniXNULib is absent from the whole Mu-Silicium tree [MU]",
+  "Include/DXE.inc:42-45 already lists DiskIoDxe, PartitionDxe, Fat and EnglishDxe unconditionally, so only the four UniXNU INF are missing from the FV, and APRIORI.inc needs no change because UniXNURamDiskDxe declares [Depex] TRUE [MU]",]
 completion = ["Firmware image builds, enters UniXNU, publishes the framebuffer and preserves the documented memory reservations."]
 limits = ["Blocked on git (build_uefi.py requires it) and on a non-Windows host for edk2; bootloader lock state also unknown."]
-next_action = ["Resolve the build host and git availability, then build SILICIUM_UEFI.fd once and record its hash."]
+next_action = ["Run the firmware mode on the macOS runner and record the SILICIUM_UEFI.fd hash; the device-side boot stays behind its own authorisation."]
 evidence = []
 
 [[area]]

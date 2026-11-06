@@ -30,9 +30,9 @@ on:
         type: string
         default: "main"
       mode:
-        description: "check = preflight + patches only; check-deps also fetches every module and the IPSW"
+        description: "check = preflight + patches only; check-deps also fetches every module and the IPSW; kernel = compile and prelink XNU; firmware = EDK II build of Mu-Silicium with the UniXNU payload"
         type: choice
-        options: ["check", "check-deps", "kernel", "package"]
+        options: ["check", "check-deps", "kernel", "firmware", "package"]
         default: "check"
       xcode:
         description: "Xcode version of the macos-26 image"
@@ -93,6 +93,42 @@ jobs:
         with:
           python-version: "3.13"
 
+      # The firmware stage needs a Mu-Silicium checkout (board.toml [firmware]
+      # source/revision, 8471e47f). It is a public repository, and so is its
+      # Device-Binaries submodule, so nothing proprietary is published by this
+      # step: the run clones exactly what upstream already serves. Submodules are
+      # left to firmware.py, which initialises the five names in board.toml.
+      - name: Check out Mu-Silicium (firmware stage only)
+        if: inputs.mode == 'firmware'
+        uses: actions/checkout@v4
+        with:
+          repository: Project-Silicium/Mu-Silicium
+          ref: 8471e47f5248ebbffc2e6196b683204163efe155
+          path: Mu-Silicium
+          submodules: false
+          fetch-depth: 1
+
+      # The UniXNU payload is not upstream: add the four INF, the UniXNULib
+      # mapping and the UNIXNU_PAYLOAD switch as a patch, so the checkout stays
+      # byte-identical to the pinned commit everywhere else.
+      - name: Apply the UniXNU payload patch to Mu-Silicium
+        if: inputs.mode == 'firmware'
+        run: |
+          set -euo pipefail
+          patch=device/firmware/mu-silicium-unixnu-integration.patch
+          [ -f "$patch" ] || { echo "::error::$patch missing"; exit 1; }
+          sha256sum "$patch"
+          git -C Mu-Silicium apply --check "$patch"
+          git -C Mu-Silicium apply "$patch"
+          git -C Mu-Silicium --no-pager diff --stat
+          # UNIXNU_PAYLOAD=1 must reach the EDK II build through board.toml
+          # [firmware.defines]; assert the device repository actually carries it
+          # so a firmware built without the payload cannot pass silently.
+          grep -q 'UNIXNU_PAYLOAD' device/board.toml || {
+            echo "::error::board.toml [firmware.defines] has no UNIXNU_PAYLOAD; the firmware would not contain the payload"
+            exit 1
+          }
+
       - name: Check the inputs
         id: check
         env:
@@ -117,6 +153,14 @@ jobs:
             brew install unifdef
             echo "$(brew --prefix unifdef)/bin" >> "$GITHUB_PATH"
           fi
+
+      # EDK II compiles the ACPI tables through iasl, which is not on the runner
+      # image and is not part of BaseTools on macOS. Only the firmware stage needs it.
+      - name: Install the firmware stage host tools
+        if: inputs.mode == 'firmware'
+        run: |
+          brew install acpica
+          iasl -v | head -n 2
 
       - name: Report the runner toolchain
         run: |
@@ -147,7 +191,7 @@ jobs:
       # two gitlinks in the *checkout* (never upstream) to the commits that do exist.
       # Remove it once upstream fixes its pins.
       - name: Repair the upstream submodule pins (B7)
-        if: inputs.mode == 'check-deps' || inputs.mode == 'kernel'
+        if: inputs.mode == 'check-deps' || inputs.mode == 'kernel' || inputs.mode == 'firmware'
         run: |
           set -euo pipefail
           cd UniXNU
@@ -198,11 +242,26 @@ jobs:
               python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
               python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE"
               ;;
+            firmware)
+              # First firmware build: EDK II compiles the UniXNU payload into Mu-Silicium's
+              # enchilada FD (CLANGPDB, AARCH64) and firmware.py refuses to pass unless the
+              # result is exactly Resources/Configs/enchilada.toml uefi_fd.size bytes.
+              #
+              # Nothing here touches the phone: no fastboot, no flash, no boot image. This
+              # only proves the integration compiles and links; the device-side stage stays
+              # behind its own authorisation.
+              cd ../UniXNU
+              python3 ./unixnu fetch --device ../device
+              python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
+              python3 ./unixnu build firmware --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium
+              ls -l ../Mu-Silicium/Build/enchiladaPkg/*_CLANGPDB/FV/SILICIUM_UEFI.fd
+              ;;
             package)
-              # The package stage needs a firmware checkout: `[firmware]` names Mu-Silicium
-              # and its 41 binary inputs live in a Device-Binaries submodule this project
-              # has not published. Run the check modes until that exists.
-              echo "::error::the package stage needs a firmware checkout; run mode=check or check-deps"
+              # The package stage also builds package/ (the UniXNU.efi applications)
+              # and needs a firmware checkout for the payload. mode=firmware covers
+              # the firmware half; this branch stays unimplemented until the two are
+              # merged behind one step.
+              echo "::error::the package stage is not implemented; use mode=firmware for the EDK II build"
               exit 1
               ;;
           esac

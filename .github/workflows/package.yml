@@ -24,7 +24,7 @@ on:
       soc_repository:
         description: "SDM845 SoC layer as owner/name"
         type: string
-        default: "REPLACE/UniXNU-sdm845-common"
+        default: "dragon120820/UniXNU-sdm845-common"
       soc_ref:
         description: "Ref of the SoC layer"
         type: string

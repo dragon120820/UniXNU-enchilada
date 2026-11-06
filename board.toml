@@ -42,8 +42,22 @@ defconfig = "enchilada_defconfig"
 # soc-support.md step 4: keep the complete arch/SoC/OS/device lists, because
 # ordinary arrays replace earlier arrays.  The arch profile's own list is not
 # visible from here, so the SoC entries are added next to the device one.
-patch_series = ["soc:patches/xnu/series", "device:patches/xnu/series"]
-config_fragments = ["soc:configs/sdm845.config"]
+# Keep the complete arch, SoC, OS and device lists: docs/porting/soc-support.md warns that
+# "tables merge by key, while ordinary arrays replace earlier arrays".  A two-entry list
+# here silently dropped the 56 arm64 patches and the 3 IPSW patches, which is exactly how
+# the first kernel run failed: the arch series carries local-availability.patch, the fix
+# for make_symbol_aliasing.sh looking for availability.pl inside the Xcode SDK.
+patch_series = [
+  "arch:patches/xnu/series",
+  "soc:patches/xnu/series",
+  "os:patches/xnu/series",
+  "device:patches/xnu/series",
+]
+# Same rule as patch_series: an ordinary array replaces the earlier one, so the
+# arch fragment has to be repeated here or profiles/arch/arm64/configs/common.config
+# never reaches the generated .config.  enchilada_defconfig repeats its switches for
+# readability, but the SoC and arch fragments are the authoritative source.
+config_fragments = ["arch:configs/common.config", "soc:configs/sdm845.config"]
 
 [kernel.prelink]
 # profiles.load() merges arch/profile.toml, <soc>/soc.toml, os/profile.toml and

@@ -1,10 +1,17 @@
 name: package
 
-# The example's copy of the packaging action (docs/porting/packaging.md). Replace the
-# firmware repository below with this board's; the device name appears in the artifact
-# paths. The platform seed comes from the repository secret UNIXNU_UNIQUE_CHIP_ID and is
-# baked into the images, so the run's artifacts belong to one device alone: download
-# them, then delete the run. Run it in a fork of the device repository.
+# Runs the packaging pipeline on a GitHub macOS runner, which is the only way to
+# reach `clang`, `make`, `mtools` and (for IPSW work) `hdiutil`/`compression_tool`
+# from this project, since no local Mac or Linux host is available.
+#
+# The platform seed comes from the repository secret UNIXNU_UNIQUE_CHIP_ID and is
+# baked into the images, so a run's artifacts belong to one device alone: download
+# them, then delete the run. Run it in a fork of this repository.
+#
+# The SoC layer is pulled as a sibling checkout of `device/` and reached through
+# feeds.toml's `local` key, because the SDM845 SoC repository has no public pinned
+# commit yet. Replace both with a pinned `git` source in feeds.toml before this
+# repository is published.
 
 on:
   workflow_dispatch:
@@ -14,68 +21,171 @@ on:
         type: choice
         options: ["17", "26", "27"]
         default: "17"
+      soc_repository:
+        description: "SDM845 SoC layer as owner/name"
+        type: string
+        default: "REPLACE/UniXNU-sdm845-common"
+      soc_ref:
+        description: "Ref of the SoC layer"
+        type: string
+        default: "main"
+      mode:
+        description: "check = preflight + patches only; check-deps also fetches every module and the IPSW"
+        type: choice
+        options: ["check", "check-deps", "package"]
+        default: "check"
+      xcode:
+        description: "Xcode version of the macos-26 image"
+        type: string
+        default: "26.6"
 
 permissions:
   contents: read
 
 concurrency:
-  group: package-${{ github.ref }}
-  cancel-in-progress: true
+  group: package-${{ github.ref }}-${{ inputs.mode }}
+  cancel-in-progress: false
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   package:
+    # Pinned: macos-latest moves between images, and macos-26 carries the Xcode 26
+    # line the UniXNU build is developed against.
     runs-on: macos-26
-    timeout-minutes: 180
+    timeout-minutes: 240
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_${{ inputs.xcode }}.app/Contents/Developer
+      OS_PROFILE: ${{ inputs.os }}
+      MODE: ${{ inputs.mode }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the device repository
+        uses: actions/checkout@v4
         with:
           path: device
-          submodules: recursive
-      - uses: actions/checkout@v4
+
+      # `[package] unixnu = "../UniXNU"` is relative to the device repository, so the
+      # UniXNU checkout has to be its sibling, not a differently named directory.
+      - name: Check out UniXNU
+        uses: actions/checkout@v4
         with:
           repository: UniXNU/UniXNU
           path: UniXNU
-          submodules: recursive
-      - uses: actions/checkout@v4
+
+      # feeds.toml reaches the SoC layer as `local = "../UniXNU-sdm845-common"`,
+      # resolved against the directory that holds feeds.toml.
+      - name: Check out the SDM845 SoC layer
+        uses: actions/checkout@v4
         with:
-          repository: REPLACE/uefi-example   # this board's firmware checkout
-          path: uefi-example
-          submodules: recursive   # the firmware volume builds from the checkout's submodules
-      - name: tools
-        run: |
-          brew install dtc llvm lld cmake mtools blacktop/tap/ipsw
-          # Fail fast, naming the tool, before forty minutes of build.
-          ok=1
-          for t in clang xcodebuild make git ninja cmake dtc fdtget fdtput aea compression_tool \
-                   mformat mcopy ipsw; do
-            command -v "$t" >/dev/null || { echo "missing tool: $t"; ok=0; }
-          done
-          for t in lld-link llvm-lib llvm-rc llvm-nm llvm-objcopy; do
-            [ -f "/opt/homebrew/opt/llvm/bin/$t" ] || [ -f "/opt/homebrew/opt/lld/bin/$t" ] || { echo "missing tool: $t"; ok=0; }
-          done
-          [ "$ok" = 1 ]
-      - name: platform seed
+          repository: ${{ inputs.soc_repository }}
+          ref: ${{ inputs.soc_ref }}
+          path: UniXNU-sdm845-common
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Check the inputs
+        id: check
         env:
-          seed: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
+          HAS_CHIP_ID: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID != '' }}
         run: |
-          if ! [[ "$seed" =~ ^[0-9a-fA-F]{8}$ ]]; then
-            echo 'Set the repository secret UNIXNU_UNIQUE_CHIP_ID: the platform seed of the device, 8 hex digits.' >&2
-            exit 1
+          fail() { echo "::error::$1"; exit 1; }
+          [ -f device/board.toml ] || fail "the device repository has no board.toml"
+          [ -f device/configs/enchilada_defconfig ] || fail "device/configs/enchilada_defconfig missing"
+          [ -f device/feeds.toml ] || fail "the device repository has no feeds.toml"
+          [ -d UniXNU-sdm845-common/dts ] || fail "the SoC layer has no dts/ directory"
+          [ -f UniXNU-sdm845-common/soc.toml ] || fail "the SoC layer has no soc.toml"
+          [ -d "$DEVELOPER_DIR" ] || fail "Xcode not found at $DEVELOPER_DIR; installed: $(printf '%s ' /Applications/Xcode_*.app)"
+          echo "runner: $(sw_vers -productVersion) $(uname -m)"
+          xcodebuild -version | head -n 2
+
+      - name: Install host tools
+        run: |
+          # Homebrew LLVM is keg-only and stays off PATH: the driver finds it for the
+          # archive builders, and everything else uses Xcode's clang.
+          brew install llvm lld mtools dtc
+          if ! command -v unifdef >/dev/null; then
+            brew install unifdef
+            echo "$(brew --prefix unifdef)/bin" >> "$GITHUB_PATH"
           fi
-      - name: package
+
+      - name: Report the runner toolchain
+        run: |
+          clang --version | head -n 1
+          "$(brew --prefix llvm)/bin/clang" --version | head -n 1
+          python3 --version
+          missing=0
+          for tool in git make clang cmake ninja unifdef ld.lld mformat mcopy dtc xcodebuild; do
+            path=$(command -v "$tool" || true)
+            printf '%-10s %s\n' "$tool" "${path:-MISSING}"
+            [ -n "$path" ] || missing=1
+          done
+          df -h "$GITHUB_WORKSPACE"
+          exit "$missing"
+
+      - name: Check the device tree compiles
+        run: |
+          cd device
+          dtc -I dts -O dtb -i ../UniXNU-sdm845-common/dts \
+              -o "$RUNNER_TEMP/enchilada.dtb" dts/enchilada.dts
+          ls -l "$RUNNER_TEMP/enchilada.dtb"
+          fdtdump "$RUNNER_TEMP/enchilada.dtb" | head -n 20
+
+      - name: Preflight and patches
         working-directory: device
         env:
           UNIXNU_UNIQUE_CHIP_ID: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: scripts/package.sh --os "${{ inputs.os }}" --uefi ../uefi-example
-      - name: images
+        run: |
+          case "$MODE" in
+            check)
+              # Fastest meaningful signal: format validation, profile merge, defconfig
+              # generation and the patch series, without cloning six Apple source trees
+              # or downloading the 4.7 GB IPSW.
+              scripts/package.sh --check --no-deps --os "$OS_PROFILE"
+              ;;
+            check-deps)
+              # Full dependency resolution: submodules, Apple source feeds, the IPSW and
+              # its kernelcache. Needs `compression_tool`, which is why this only runs on
+              # a macOS runner.
+              scripts/package.sh --check --os "$OS_PROFILE"
+              ;;
+            package)
+              # The package stage needs a firmware checkout: `[firmware]` names Mu-Silicium
+              # and its 41 binary inputs live in a Device-Binaries submodule this project
+              # has not published. Run the check modes until that exists.
+              echo "::error::the package stage needs a firmware checkout; run mode=check or check-deps"
+              exit 1
+              ;;
+          esac
+
+      - name: Collect the logs
+        if: always()
+        run: |
+          # Only text logs are uploaded. Kernels, payloads, disk images, kernelcaches
+          # and IPSW members are never published: they derive from Apple software.
+          mkdir -p "$RUNNER_TEMP/logs"
+          for f in UniXNU/out/enchilada/*/logs/*.log; do
+            [ -f "$f" ] && cp "$f" "$RUNNER_TEMP/logs/$(basename "$f")"
+          done
+          if [ -d device/build ]; then
+            find device/build -name '*.log' -exec cp {} "$RUNNER_TEMP/logs/" \; 2>/dev/null || true
+          fi
+          ls -l "$RUNNER_TEMP/logs" || true
+
+      - name: Upload the logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: images-${{ inputs.os }}
-          retention-days: 1
-          if-no-files-found: error
-          path: |
-            UniXNU/out/example/*/*/boot/boot.img
-            UniXNU/out/example/*/*/payload/payload.img
-            UniXNU/out/example/*/*/kernel/kernel.macho
-            UniXNU/out/example/*/*/package.manifest.json
+          name: logs-${{ inputs.mode }}-${{ inputs.os }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: ${{ runner.temp }}/logs

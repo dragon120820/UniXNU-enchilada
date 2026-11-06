@@ -32,7 +32,7 @@ on:
       mode:
         description: "check = preflight + patches only; check-deps also fetches every module and the IPSW"
         type: choice
-        options: ["check", "check-deps", "package"]
+        options: ["check", "check-deps", "kernel", "package"]
         default: "check"
       xcode:
         description: "Xcode version of the macos-26 image"
@@ -147,7 +147,7 @@ jobs:
       # two gitlinks in the *checkout* (never upstream) to the commits that do exist.
       # Remove it once upstream fixes its pins.
       - name: Repair the upstream submodule pins (B7)
-        if: inputs.mode == 'check-deps'
+        if: inputs.mode == 'check-deps' || inputs.mode == 'kernel'
         run: |
           set -euo pipefail
           cd UniXNU
@@ -176,6 +176,18 @@ jobs:
               # its kernelcache. Needs `compression_tool`, which is why this only runs on
               # a macOS runner.
               scripts/package.sh --check --os "$OS_PROFILE"
+              ;;
+            kernel)
+              # First real build step: compile the patched XNU for arm64 and prelink it
+              # against the IPSW kernelcache. This is the entry point of P4/P5.
+              #
+              # Run from the UniXNU checkout so `[package] unixnu = "../UniXNU"` and the
+              # sibling SoC checkout keep their relative positions. `fetch` runs first
+              # because the kernel step needs every Apple source tree and the IPSW
+              # kernelcache, which is also what `check-deps` proves works.
+              cd ../UniXNU
+              python3 ./unixnu fetch --device ../device
+              python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE"
               ;;
             package)
               # The package stage needs a firmware checkout: `[firmware]` names Mu-Silicium

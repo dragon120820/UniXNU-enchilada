@@ -1,0 +1,58 @@
+# Kernel configuration for the OnePlus 6 (A6003 / enchilada / SDM845).
+#
+# Syntax is the one scripts/unixnu/config.py:parse_config() accepts: CONFIG_X-
+# prefixed names, `y`/`n`, a bare number or a quoted string, and
+# "# CONFIG_X is not set".  Each CONFIG_XNU_<NAME> becomes XNU_<NAME> for the
+# kernel build (scripts/unixnu/kernel.py:xnu_env), and "{tree}" in a string is
+# replaced with the build tree path.
+#
+# The shared arch and OS fragments are NOT repeated here: they are merged in from
+# profiles/arch/arm64/configs/common.config and
+# profiles/os/ipados-17.7.11-21H461/configs/ipados.config by [kernel]
+# config_fragments.  Only board decisions live in this file.
+#
+# Source of every "why" below: reports/SOURCE_AUDIT.md and reports/P1_BACKUP.md.
+
+# ---- what the arch fragment already sets (repeated for readability) --------
+CONFIG_XNU_ARM_DT_PLATFORM=y
+CONFIG_XNU_ARMCPU=y
+CONFIG_XNU_SOURCE_CORECRYPTO14=y
+CONFIG_XNU_SOURCE_PTHREAD=y
+CONFIG_XNU_NATIVE_AES=y
+CONFIG_XNU_NATIVE_ARCH_TIMER=y
+CONFIG_XNU_NATIVE_PAN=y
+CONFIG_XNU_BUILD_ARCHIVES=y
+
+# ---- OS profile switches ---------------------------------------------------
+CONFIG_XNU_TRUST_CACHE_RUNTIME=y
+CONFIG_XNU_SOURCE_MOCKFS=y
+CONFIG_XNU_NATIVE_CS_HASH_CACHE=y
+CONFIG_XNU_CRYPTO_BOOTSTRAP="prelinked"
+
+# ---- stage 1 is a console-only bring-up ------------------------------------
+# P5 stops at K4 "reached the root device and waits".  Nothing that needs a
+# panel, a backlight, a touch controller or a GPU is enabled before that, because
+# every one of those needs pin muxing on TLMM (0x03400000 + 0x00C00000) and the
+# board DTS keeps that node disabled on purpose.
+# CONFIG_XNU_NATIVE_LEGACY_DISPLAY is not set
+# CONFIG_XNU_NATIVE_ADRENO is not set
+# CONFIG_XNU_NATIVE_UFS is not set
+
+# ---- storage ---------------------------------------------------------------
+# VerifiedRoot stays in [components] include because the storage area of
+# porting.toml claims it, but the kernel side of the first round hashes the root
+# image in software, 4 KiB at a time.  The inline crypto engine (qcom,ice at
+# 0x01d90000) is disabled in the board DTS for the same reason, so
+# NATIVE_UFS would have no block driver to bind under XNU on this SoC yet.
+# CONFIG_XNU_NATIVE_UFS is not set
+
+# The owner chain's Data volume is not mounted in the first round; persistent
+# Data is an S4 item and needs a verified store first.
+# CONFIG_XNU_OWNER_DATA_MOUNT is not set
+
+# The cache carrier is the SystemOS cryptex volume the signed policy covers.
+# It is an APFS volume UUID, not an Android partition GUID, so it comes from the
+# OS profile rather than from this handset.  Left unset, the kernel uses the
+# profile's built-in value; fill both when the root images are produced.
+# CONFIG_XNU_OWNER_DATA_VOLUME_UUID="00000000-0000-0000-0000-000000000000"
+# CONFIG_XNU_OWNER_CACHE_VOLUME_UUID="00000000-0000-0000-0000-000000000000"

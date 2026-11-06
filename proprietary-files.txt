@@ -1,0 +1,74 @@
+# Required firmware inputs: relative path | source | SHA-256 | consumer
+#
+# Every line names a file the firmware build reads out of `.cache/firmware`
+# (docs/porting/device-repository.md:426).  The device repository does not carry
+# the bytes; it carries the promise that an input exists and has a given digest,
+# and the build tree links the cache directory in.
+#
+# Source of every line below: the `Binaries` submodule of Mu-Silicium, pinned at
+# the commit that the firmware checkout itself pins,
+#   9f4dbfd7d61acdae69fd5bb48720ce7e53711e25
+# of https://github.com/Project-Silicium/Device-Binaries.git
+# That submodule was fetched with git on 2026-11-06 and the digests below were
+# computed over the checked-out files, not copied from a manifest.
+#
+# The list is exactly the set of paths that
+# Platforms/OnePlus/enchiladaPkg references by name: 41 unique paths out of
+# Include/APRIORI.inc (36 INF), Include/DXE.inc (36 INF, overlapping) and
+# Include/RAW.inc (3 raw files).  All 41 resolve; none is invented.
+#   - 38 are PE32/DXE_DEPEX module descriptions (.inf) read by APRIORI/DXE
+#   - 3 are raw blobs packed into the FV by GUID
+#       A1E235DE-E825-4591-9623-C43175811826  RawFiles/SecParti.cfg
+#       45FE4B7C-150C-45DA-A021-4BEB2048EC6F  RawFiles/QcomChargerCfg.cfg
+#       F780C779-DD7C-47CD-BD1A-5EB414C51704  RawFiles/BATTERY.PROVISION
+#
+# Paths are written as the firmware build spells them (Binaries/...), relative
+# to the root that PACKAGES_PATH exposes; two of the 41 live under
+# Binaries/generic rather than Binaries/enchilada.
+#
+# Not listed on purpose: the rest of the Binaries tree (22,004 files, 590 MB,
+# hashes in evidence/host/20261106_mu_binaries/all_binaries.tsv).  Only the
+# files enchiladaPkg names are inputs; listing the others would overstate what
+# this board consumes.
+
+Binaries/enchilada/QcomPkg/Drivers/AdcDxe/AdcDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 74484b9ce20e591ff22996ca5a70885e405784360d980b66faeb9918c3bd51d0 | firmware   # 382 B
+Binaries/enchilada/QcomPkg/Drivers/ButtonsDxe/ButtonsDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 1963265f3c54aaa5cdfdc92ae4069a2d422525bacece2141db2f6a4759ed3e7e | firmware   # 402 B
+Binaries/enchilada/QcomPkg/Drivers/CPRDxe/CPRDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | ba8ace8f979ca131f31b500276b182335b96f8d0db570563e2ec4f4c1a2a302d | firmware   # 382 B
+Binaries/enchilada/QcomPkg/Drivers/ChargerExDxe/ChargerExDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 4d3f8b1e71339cb9f71e110efc2e7f6c3fb27563a4e81ed97fa3529efe0d3198 | firmware   # 400 B
+Binaries/enchilada/QcomPkg/Drivers/ChipInfoDxe/ChipInfoDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 68014d119bddf64cae517f33eab55c4d8fa6f561b13d4eacdd5236eb6253cb00 | firmware   # 394 B
+Binaries/enchilada/QcomPkg/Drivers/ClockDxe/ClockDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | f3342fa607dd66215f1935587a612bc3db7bb7f8994ed0de9cee3ce3f6b6186e | firmware   # 388 B
+Binaries/enchilada/QcomPkg/Drivers/CmdDbDxe/CmdDbDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | bffc27779d34ec83de2864d4753378f0c9e47ce733ecf9c46e5ec0eb8422089c | firmware   # 388 B
+Binaries/enchilada/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | b6e04b0389f28d52b5807d4afbcf56b333bc9580615cb57e111b5d49d0591d6b | firmware   # 388 B
+Binaries/enchilada/QcomPkg/Drivers/DDRInfoDxe/DDRInfoDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | eaee3023cd6c33520680cc8fc4257a1968b3ecaf9f6a69760f1b4a6b22590be6 | firmware   # 394 B
+Binaries/enchilada/QcomPkg/Drivers/DisplayDxe/DisplayDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | c37ca60319c1efd10f32478d6bcfa6c2fb45a5f9a11df7675456cc1440507a10 | firmware   # 402 B
+Binaries/enchilada/QcomPkg/Drivers/EnvDxe/EnvDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 40cc094fd9c9af1879deb7e67320fda79dc0fe6933c1c0fca4cd9e6c04c3b9e9 | firmware   # 382 B
+Binaries/enchilada/QcomPkg/Drivers/GpiDxe/GpiDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 3750631391024133730ff313262d80ef7375e6e97e91b3c51e506af293cad128 | firmware   # 382 B
+Binaries/enchilada/QcomPkg/Drivers/HALIOMMUDxe/HALIOMMUDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 87c84ee0fc8d4ec01e2944fc52c98125290ac3ec63db04305e1f17c4e4bc753c | firmware   # 402 B
+Binaries/enchilada/QcomPkg/Drivers/HWIODxe/HWIODxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 573d5af5cc745fca3297d977c7676fdb53651a687dd2d9cbdfaf809816a00bd5 | firmware   # 391 B
+Binaries/enchilada/QcomPkg/Drivers/HashDxe/HashDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | ca033005501b8ccb1c0b881e61b098bb7c87328e0b22e8a6993bfe09535cd8bf | firmware   # 298 B
+Binaries/enchilada/QcomPkg/Drivers/LimitsDxe/LimitsDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | a300ddd0f6dc93ca914def7c2619bd920ec5e8359bbc2d72b4090ac2ed019588 | firmware   # 302 B
+Binaries/enchilada/QcomPkg/Drivers/NpaDxe/NpaDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | afcf319a646f9438325dcc9e774bad83d35224792c39e338e57c3ea5f95374dd | firmware   # 382 B
+Binaries/enchilada/QcomPkg/Drivers/PdcDxe/PdcDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | c82affab57c99a7ab844be376fdc1a6e34971f3123f004493a4b7dc86db28a0c | firmware   # 382 B
+Binaries/enchilada/QcomPkg/Drivers/PlatformInfoDxe/PlatformInfoDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 881ad544da5e170a5134c573d69412a338da6a5357df22987a43b87ced0d2523 | firmware   # 415 B
+Binaries/enchilada/QcomPkg/Drivers/PmicDxe/PmicDxeLa.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 9a99269788599e965dacaa94a05fb61470bb7c2d21e775ba45eae6bcbe839b0f | firmware   # 389 B
+Binaries/enchilada/QcomPkg/Drivers/QcomChargerDxe/QcomChargerDxeLA.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 468a96b89ab83b17626a9f48504bb5eb2b044bcfbbaed43d8385e874e2772fb8 | firmware   # 412 B
+Binaries/enchilada/QcomPkg/Drivers/RNGDxe/RngDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 6551d1dfde07b26595cc7e080215238a3e15e78e8657f60f7e4fa6dee16e5504 | firmware   # 296 B
+Binaries/enchilada/QcomPkg/Drivers/RpmhDxe/RpmhDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 95c2fe7adaec4f0922c46aa7679684e76329f76b33323519a90f7ead7a92395e | firmware   # 385 B
+Binaries/enchilada/QcomPkg/Drivers/SPMIDxe/SPMIDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 3289f3a76050955e9cea3c4f457a3bfcd76e26245b500b6db4fbb4176973b4d6 | firmware   # 382 B
+Binaries/enchilada/QcomPkg/Drivers/SdccDxe/SdccDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 1c0c3c0983ba1805a81c9230d6f69f8111f659e8cedb210e05e6840669889158 | firmware   # 385 B
+Binaries/enchilada/QcomPkg/Drivers/SmemDxe/SmemDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 1a830b9e4972e5f900456d26285f6072808bc74064695384b4ca2e52a62d1725 | firmware   # 385 B
+Binaries/enchilada/QcomPkg/Drivers/TLMMDxe/TLMMDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | af68cac6220bc2f972dab8a1cc2d383a1f9476435bd9151c59f85884c5947297 | firmware   # 385 B
+Binaries/enchilada/QcomPkg/Drivers/TsensDxe/TsensDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 5aaa7f63d16d7790fecd68fa0fb0eb5980698c813b6af4053da203488c084d63 | firmware   # 388 B
+Binaries/enchilada/QcomPkg/Drivers/TzDxe/TzDxeLA.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 9204bf6330abb0fcdeca01f1177cb5dfbcfaa7d35d9482238e8fa03f7ccb4769 | firmware   # 383 B
+Binaries/enchilada/QcomPkg/Drivers/UFSDxe/UFSDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | c50a8f4c98281579cb049a709fa8f5e5ec755ebe67449043bd10beb6028733e3 | firmware   # 382 B
+Binaries/enchilada/QcomPkg/Drivers/ULogDxe/ULogDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 0526de259e4365de7e51f0ce9f2e6c6bfe2e639dac6a274a567196dd1d422830 | firmware   # 385 B
+Binaries/enchilada/QcomPkg/Drivers/UsbConfigDxe/UsbConfigDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 61d67e1f9570e5d433ec27fc81d2d858b2228d57ccf423718aa96f550db5e2f9 | firmware   # 402 B
+Binaries/enchilada/QcomPkg/Drivers/UsbDeviceDxe/UsbDeviceDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 064a3699476fd17a7e6b0f18eeb3011dedfb78f26d89cfaadedfec4a29f18905 | firmware   # 400 B
+Binaries/enchilada/QcomPkg/Drivers/UsbMsdDxe/UsbMsdDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 0bbba10baccb6e24045e4b963b68c846e269f0cf18c4bb42fd72b11316e5af88 | firmware   # 399 B
+Binaries/enchilada/QcomPkg/Drivers/UsbPwrCtrlDxe/UsbPwrCtrlDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 43e6bfc73e1c5f95941933718ed705bc621c7ad1572ccd658ad6c0dbf682a0de | firmware   # 403 B
+Binaries/enchilada/QcomPkg/Drivers/UsbfnDwc3Dxe/UsbfnDwc3Dxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | f5635c108539ce7f99bd05bd623078aec56cdfdd2011a2c22bbb09c2954f6e23 | firmware   # 400 B
+Binaries/enchilada/RawFiles/BATTERY.PROVISION | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | f0ec81a566bf0e45d77caf1655a051ece2bf5aff5356d9aafddf993e60173a3f | firmware   # 15741 B
+Binaries/enchilada/RawFiles/QcomChargerCfg.cfg | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | fb95a2c823b00025e5e415763ea7f26f9ded92302fdec1c20560583c10243862 | firmware   # 11169 B
+Binaries/enchilada/RawFiles/SecParti.cfg | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 56713f6323ea27af483a38a7333b28038e5fa2853563979fdf5e76554c5abe56 | firmware   # 4453 B
+Binaries/generic/QcomPkg/Drivers/XhciDxe/XhciDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 64563766a4fc58c29329d9544163f19ae45a318e4bf4ea4b2328d1b4ddd82376 | firmware   # 307 B
+Binaries/generic/QcomPkg/Drivers/XhciPciEmulationDxe/XhciPciEmulationDxe.inf | Project-Silicium/Device-Binaries@9f4dbfd7d61acdae69fd5bb48720ce7e53711e25 | 24a599eae242bed15028d7264e22d6721479dbe04dd59e0630d84bfdd1205c66 | firmware   # 432 B

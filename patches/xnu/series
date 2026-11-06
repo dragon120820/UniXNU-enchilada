@@ -1,0 +1,29 @@
+# Board patch paths, one per line, in application order.
+#
+# How this file is read (scripts/unixnu/patches.py:12-31):
+#   * [kernel] patch_series lists the series files to consult; a series file is
+#     read by this one into `plan()`;
+#   * a line is skipped when empty or when it starts with '#';
+#   * a line is resolved against the profile roots when it begins with
+#     "component:" or with a known prefix ("arch:", "soc:", "os:", "device:");
+#     otherwise it is resolved relative to this file;
+#   * a path that does not exist is a hard error ("patch missing"), a path listed
+#     twice is a hard error ("patch appears twice"), and a patch that fails to
+#     apply aborts with "XNU patch <path>: ...".
+#
+# This matters here specifically: the format 1 community repositories carried
+# their board patches in patches/xnu-device/*.patch with zzz-prefixed names and
+# relied on filename ordering.  Format 2 never looks at file names, so copying
+# those patches into a directory would silently do nothing.  Nothing is listed
+# below because no board patch has been ported and verified yet; an entry appears
+# here only once it applies cleanly to the pinned XNU revision.
+#
+# Candidates, to be ported one at a time with a test that proves the effect:
+#   device:patches/xnu/enchilada-arm64-no-pauth.patch
+#       SDM845 is Cortex-A75/A55: no ARMv8.3 pointer authentication, so anything
+#       that assumes FEAT_PAuth on arm64 has to be conditionalised.
+#   device:patches/xnu/enchilada-smmu-v500.patch
+#       apps-smmu is a qsmmu-v500 controller (compatible "qcom,qsmmu-v500",
+#       reg 0x15000000+0x80000 with a TCU window at 0x150c2000).  XNU's
+#       ArmSmmu4K kit targets MMU-500/4K-style setups and has no qsmmu-v500
+#       path, so this is the largest known unknown in the memory area.

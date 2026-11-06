@@ -1,0 +1,30 @@
+# Module sources for this device repository.
+#
+# The SoC layer SDM845 needs does not exist upstream: UniXNU/UniXNU ships
+# UniXNU-sm8550-common only, and `devices.toml` lists all eight SDM845 handsets
+# as format 1 legacy entries with no SoC source.  `components.toml` has no
+# Adreno 630 either.  So this entry cannot be pinned to a reviewed commit yet,
+# and `unixnu defconfig` / `scripts/package.sh --check` stop here with
+# "feeds.toml needs a source with kind = \"soc\" and name = \"sdm845\"".
+#
+# Two ways forward, both tracked in reports/NEXT_TASKS.md:
+#   a) write UniXNU-sdm845-common (drivers/ArmCpu, ArmDTPlatform, an sd845.dtsi,
+#      the SDM845 MMIO map, SMMU/USB/clock controllers) and point this entry at
+#      the reviewed commit of that repository;
+#   b) for a first console-only experiment, drop a checkout next to this one and
+#      uncomment the `local` line, which skips the pin on purpose and is never
+#      recorded in unixnu.lock.
+#
+# `unixnu fetch` writes the resolved revisions to unixnu.lock; commit that file.
+
+[[source]]
+name = "sdm845"
+kind = "soc"
+git = "REQUIRED_SOC_GIT_URL"
+# Replace with a reviewed 40-character commit from the selected SoC repository.
+commit = "REQUIRED_SOC_COMMIT"
+# ACTIVE for the first console experiment: the Draft SDM845 SoC layer next to
+# this repository.  A local source skips the pin deliberately and is never
+# written to unixnu.lock, so this line must become a pinned git source before
+# anything is published.
+local = "../UniXNU-sdm845-common"

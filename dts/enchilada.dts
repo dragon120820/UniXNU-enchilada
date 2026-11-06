@@ -1,0 +1,46 @@
+/dts-v1/;
+
+/*
+ * OnePlus 6 (A6003) / enchilada / SDM845 - board hardware description
+ * for UniXNU format 2.
+ *
+ * The shared SDM845 resources (CPU topology, PSCI, GICv3, UFS controller,
+ * UFS PHY, architectural timer, apps SMMU, TLMM) live in the SoC repository
+ * and arrive through the /include/ below.  This file keeps only what is true
+ * of *this board*: the DRAM extent and the board identity.
+ *
+ * The include is resolved by dtc's -i search path: scripts/unixnu/devicetree.py
+ * passes one -i per [device_tree] include_dirs entry, and board.toml declares
+ * include_dirs = ["soc:dts"].  tools/dtslib.py mirrors that resolution so the
+ * offline checks read exactly the file the compiler will.
+ *
+ * BUILD STATUS: the SoC DTSI is a working draft in work/UniXNU-sdm845-common,
+ * reached through a feed `local` entry.  UniXNU ships no SDM845 SoC repository,
+ * so nothing here has been compiled with dtc yet - this host has no dtc.
+ */
+
+/include/ "sdm845.dtsi"
+
+/ {
+	model = "OnePlus 6 (A6003)";
+	compatible = "oneplus,enchilada", "qcom,sdm845";
+
+	/*
+	 * Derived, not copied.  The live FDT declares two ranges:
+	 *   <0x0 0x80000000 0x1 0x0 0x1 0x80000000 0x0 0xfc8a0000>
+	 * i.e. 0x80000000 + 4 GiB, then 0x180000000 + 0xfc8a0000 (3.95 GiB),
+	 * for 7.95 GiB total.  scripts/unixnu/devicetree.py:302-304 requires
+	 * exactly one contiguous DRAM range, so the two are folded into one.
+	 *
+	 * Deliberately NOT claimed: the remaining 0x3760000 (55.4 MiB) up to the
+	 * nominal 8 GiB.  The live FDT does not describe it and /proc/iomem's
+	 * System RAM ends at 0x27c89ffff, so declaring it would be a guess.
+	 *
+	 * [payload] dram_size in board.toml must equal this length; devicetree.py
+	 * refuses to build when the two disagree.
+	 */
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x1 0xfc8a0000>;
+	};
+};

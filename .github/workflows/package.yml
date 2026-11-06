@@ -140,6 +140,25 @@ jobs:
           ls -l "$RUNNER_TEMP/enchilada.dtb"
           fdtdump "$RUNNER_TEMP/enchilada.dtb" | head -n 20
 
+      # B7: the upstream UniXNU commit pinned here records two submodule commits
+      # that do not exist on the remotes, so `git submodule update` fails with
+      # "upload-pack: not our ref". Only `mode=check-deps` walks the submodules;
+      # `mode=check` passes --no-deps and never touches them. This step rewrites the
+      # two gitlinks in the *checkout* (never upstream) to the commits that do exist.
+      # Remove it once upstream fixes its pins.
+      - name: Repair the upstream submodule pins (B7)
+        if: inputs.mode == 'check-deps'
+        run: |
+          set -euo pipefail
+          cd UniXNU
+          echo "pins before:"; git ls-files -s drivers/ArmCpu kits/XnuPrelink
+          # drivers/ArmCpu: the recorded 2e11cda7 does not exist; main is 93a5030c.
+          git update-index --cacheinfo 160000,93a5030c5d983d0ef90f0fca93879d6e36ad1ba8,drivers/ArmCpu
+          # kits/XnuPrelink: ef4fe4f9 exists but needs a direct fetch of the commit.
+          git update-index --cacheinfo 160000,ef4fe4f9ec59faa04eba24025bac0fa2985dbe5b,kits/XnuPrelink
+          echo "pins after:"; git ls-files -s drivers/ArmCpu kits/XnuPrelink
+          echo "::warning::B7 workaround applied in the checkout only; upstream UniXNU still records bad pins"
+
       - name: Preflight and patches
         working-directory: device
         env:

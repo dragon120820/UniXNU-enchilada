@@ -58,6 +58,22 @@ patch_series = [
 # never reaches the generated .config.  enchilada_defconfig repeats its switches for
 # readability, but the SoC and arch fragments are the authoritative source.
 config_fragments = ["arch:configs/common.config", "soc:configs/sdm845.config"]
+# kernel.archives has the same replace-not-append rule, and scripts/unixnu/kernel.py
+# archive_plan() raises "[kernel] archives needs component entries for: X" for every
+# selected component whose build_stage is kernel and that no component: entry names.
+# The arch list is therefore repeated verbatim, plus RamBlock, which this board
+# selects (storage stays off in the first boot, but the archive still has to be built).
+archives = [
+  "build-corecrypto-14.py",
+  "build-corecrypto-14.py --namespace",
+  "component:ArmDTPlatform",
+  "component:ArmCpu",
+  "component:SoftwareAES",
+  "build-software-aes-bindings.py",
+  "build-mockfs-fixture.py",
+  "build-libpthread-kernel.py",
+  "component:RamBlock",
+]
 
 [kernel.prelink]
 # profiles.load() merges arch/profile.toml, <soc>/soc.toml, os/profile.toml and

@@ -99,7 +99,7 @@ jobs:
       # step: the run clones exactly what upstream already serves. Submodules are
       # left to firmware.py, which initialises the five names in board.toml.
       - name: Check out Mu-Silicium (firmware stage only)
-        if: inputs.mode == 'firmware'
+        if: inputs.mode == 'firmware' || inputs.mode == 'bootimg'
         uses: actions/checkout@v4
         with:
           repository: Project-Silicium/Mu-Silicium
@@ -112,7 +112,7 @@ jobs:
       # mapping and the UNIXNU_PAYLOAD switch as a patch, so the checkout stays
       # byte-identical to the pinned commit everywhere else.
       - name: Apply the UniXNU payload patch to Mu-Silicium
-        if: inputs.mode == 'firmware'
+        if: inputs.mode == 'firmware' || inputs.mode == 'bootimg'
         run: |
           set -euo pipefail
           patch=$PWD/device/firmware/mu-silicium-unixnu-integration.patch
@@ -160,7 +160,7 @@ jobs:
       # EDK II compiles the ACPI tables through iasl, which is not on the runner
       # image and is not part of BaseTools on macOS. Only the firmware stage needs it.
       - name: Install the firmware stage host tools
-        if: inputs.mode == 'firmware'
+        if: inputs.mode == 'firmware' || inputs.mode == 'bootimg'
         run: |
           brew install acpica
           iasl -v | head -n 2

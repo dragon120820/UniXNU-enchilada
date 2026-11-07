@@ -285,7 +285,7 @@ jobs:
               cd ../UniXNU
               python3 ./unixnu fetch --device ../device
               python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
-              python3 ./unixnu build firmware --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium
+              python3 ./unixnu build firmware --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium --target RELEASE
               ls -l ../Mu-Silicium/Build/enchiladaPkg/*_CLANGPDB/FV/SILICIUM_UEFI.fd
               # The FD itself is not uploaded (logs only), so the hash has to be
               # printed here: it is the only way to record a firmware identity
@@ -299,7 +299,7 @@ jobs:
               cd ../UniXNU
               python3 ./unixnu fetch --device ../device
               python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
-              python3 ./unixnu build firmware --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium
+              python3 ./unixnu build firmware --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium --target RELEASE
               FD=$(ls ../Mu-Silicium/Build/enchiladaPkg/*_CLANGPDB/FV/SILICIUM_UEFI.fd)
               sha256sum "$FD"
               # The ABL inflates the gzip kernel package and expects an ARM64 Image

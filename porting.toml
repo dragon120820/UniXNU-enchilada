@@ -49,7 +49,7 @@ evidence = []
 
 [[area]]
 id = "firmware"
-status = "planned"
+status = "host-verified"
 components = []
 paths = ["proprietary-files.txt", "scripts/check-*.py", "scripts/extract-*.py", "firmware/**"]
 inputs = [
@@ -70,8 +70,10 @@ findings = ["Neither UEFI candidate contains any UniXNU, DarwinBoot or initrd in
   "Include/DXE.inc:42-45 already lists DiskIoDxe, PartitionDxe, Fat and EnglishDxe unconditionally, so only the four UniXNU INF are missing from the FV, and APRIORI.inc needs no change because UniXNURamDiskDxe declares [Depex] TRUE [MU]",]
 completion = ["Firmware image builds, enters UniXNU, publishes the framebuffer and preserves the documented memory reservations."]
 limits = ["Blocked on git (build_uefi.py requires it) and on a non-Windows host for edk2; bootloader lock state also unknown."]
-next_action = ["Run the firmware mode on the macOS runner and record the SILICIUM_UEFI.fd hash; the device-side boot stays behind its own authorisation."]
-evidence = []
+next_action = ["Package the built firmware into a boot image (the package and bootimg stages are still unimplemented), then boot it once on the device; that last step needs its own authorisation."]
+evidence = [
+  { kind = "host", reference = "firmware/mu-silicium-unixnu-integration.patch", command = "python3 ./unixnu build firmware --device ../device --os 17 --uefi ../Mu-Silicium", revision = "c01e132762bd1ce26f2f18c5323c192e9b9de63a", result = "2026-11-07: run 42278206464 on macos-26 built Build/enchiladaPkg/DEBUG_CLANGPDB/FV/SILICIUM_UEFI.fd at exactly 3145728 bytes with -D UNIXNU_PAYLOAD=1 on the build line, and UniXNULib, UniXNU, UniXNUDxe, DarwinBoot and UniXNURamDiskDxe all compiled for AARCH64. The firmware has never run: no boot image, no payload ramdisk and no device-side ADT exist." },
+]
 
 [[area]]
 id = "cpu"

@@ -197,7 +197,7 @@ jobs:
       # two gitlinks in the *checkout* (never upstream) to the commits that do exist.
       # Remove it once upstream fixes its pins.
       - name: Repair the upstream submodule pins (B7)
-        if: inputs.mode == 'check-deps' || inputs.mode == 'kernel' || inputs.mode == 'firmware'
+        if: inputs.mode != 'check' && inputs.mode != 'check-deps-lite'
         run: |
           set -euo pipefail
           cd UniXNU

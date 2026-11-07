@@ -1,0 +1,35 @@
+Mu-Silicium: break the PcdDxe self-deadlock on enchilada
+
+Applies AFTER mu-silicium-unixnu-integration.patch (its anchor is the
+DarwinBoot !endif block that patch adds).
+
+PcdDxe (DXE_DRIVER) links DxePcdLib, whose [Depex] is gEfiPcdProtocolGuid.
+BaseTools merges library depex into the module depex unconditionally, so the
+as-built depex of PcdDxe becomes "PUSH gEfiPcdProtocolGuid END" - the driver
+waits for the very protocol it installs and never dispatches. Every driver
+whose depex references gEfiPcdProtocolGuid (29 modules incl. VariableRuntimeDxe,
+RealTimeClock, ResetSystem, Metronome, CapsuleRuntimeDxe, UniXNUDxe) then
+stays undispatched, the architectural protocols never appear and DxeCore
+asserts at DxeMain.c(581). Observed on-device 2026-11-07.
+
+Override PcdLib with BasePcdLibNull for Pcd.inf exactly like upstream
+OvmfPkgX64.dsc does for the same module.
+---
+--- a/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
++++ b/Platforms/OnePlus/enchiladaPkg/enchilada.dsc
+@@ -91,3 +91,15 @@
+   UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
+   DarwinBootPkg/Driver/DarwinBoot.inf
+ !endif
++
++  #
++  # PcdDxe must use BasePcdLibNull: BaseTools merges DxePcdLib's
++  # gEfiPcdProtocolGuid depex into the module depex, so PcdDxe would wait for
++  # the protocol it itself installs and never dispatch, starving every
++  # PCD-dependent driver (VariableRuntimeDxe, RTC, Capsule, ...) and tripping
++  # DxeMain.c(581). Same override upstream OvmfPkgX64.dsc makes for Pcd.inf.
++  #
++  MdeModulePkg/Universal/PCD/Dxe/Pcd.inf {
++    <LibraryClasses>
++      PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
++  }

@@ -124,6 +124,18 @@ jobs:
           git -C Mu-Silicium apply --check "$patch"
           git -C Mu-Silicium apply "$patch"
           git -C Mu-Silicium --no-pager diff --stat
+          # Break the PcdDxe self-deadlock: PcdDxe links DxePcdLib whose depex is
+          # gEfiPcdProtocolGuid, BaseTools merges library depex into the module
+          # depex, so PcdDxe waits for the protocol it itself installs and never
+          # dispatches (starving VariableRuntimeDxe/RTC/Capsule/... and tripping
+          # DxeMain.c:581). Override PcdLib with BasePcdLibNull like upstream
+          # OvmfPkgX64.dsc does.
+          pcddxe=$PWD/device/firmware/mu-silicium-pcddxe-depex.patch
+          [ -f "$pcddxe" ] || { echo "::error::$pcddxe missing"; exit 1; }
+          sha256sum "$pcddxe"
+          git -C Mu-Silicium apply --check "$pcddxe"
+          git -C Mu-Silicium apply "$pcddxe"
+          git -C Mu-Silicium --no-pager diff --stat | tail -2
           # UNIXNU_PAYLOAD=1 must reach the EDK II build through board.toml
           # [firmware.defines]; assert the device repository actually carries it
           # so a firmware built without the payload cannot pass silently.

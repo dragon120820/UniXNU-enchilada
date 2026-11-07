@@ -280,7 +280,7 @@ jobs:
               # but BootShim.S stores FD_SIZE verbatim, so the check cannot pass with
               # requires_kernel_header=true. The OnePlus 6 ABL never inspects that
               # header, so drop it for this board (a dedicated Mu patch, checked in).
-              NOHDR=$PWD/device/firmware/mu-silicium-enchilada-no-kernel-header.patch
+              NOHDR=$GITHUB_WORKSPACE/device/firmware/mu-silicium-enchilada-no-kernel-header.patch
               sha256sum "$NOHDR"
               git -C ../Mu-Silicium apply --check "$NOHDR"
               git -C ../Mu-Silicium apply "$NOHDR"

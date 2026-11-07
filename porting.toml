@@ -76,6 +76,7 @@ limits = ["Blocked on git (build_uefi.py requires it) and on a non-Windows host 
 next_action = ["Package the built firmware into a boot image (the package and bootimg stages are still unimplemented), then boot it once on the device; that last step needs its own authorisation."]
 evidence = [
   { kind = "host", reference = "firmware/mu-silicium-unixnu-integration.patch", command = "python3 ./unixnu build firmware --device ../device --os 17 --uefi ../Mu-Silicium", revision = "c01e132762bd1ce26f2f18c5323c192e9b9de63a", result = "2026-11-07: run 42278206464 on macos-26 built Build/enchiladaPkg/DEBUG_CLANGPDB/FV/SILICIUM_UEFI.fd at exactly 3145728 bytes with -D UNIXNU_PAYLOAD=1 on the build line, and UniXNULib, UniXNU, UniXNUDxe, DarwinBoot and UniXNURamDiskDxe all compiled for AARCH64. The firmware has never run: no boot image, no payload ramdisk and no device-side ADT exist." },
+  { kind = "host", reference = "firmware/mu-silicium-bootshim-image-header.patch", command = "git -C ../Mu-Silicium apply firmware/mu-silicium-bootshim-image-header.patch", revision = "8d206176b0d9f61c49345b65487188eedffc8ebe", result = "2026-11-07: the boot shim keeps its ARM64 Image header and reports Image Size = FD_SIZE + (_Payload - _Head) so the field describes shim+FD, matching unixnu bootimg's shim self-check and the ABL gzip path; replaces the superseded no-kernel-header patch." }
 ]
 
 [[area]]

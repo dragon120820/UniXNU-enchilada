@@ -1,0 +1,30 @@
+From: UniXNU-enchilada board
+Subject: [PATCH] enchilada: build the boot shim without the ARM64 kernel header
+
+unixnu bootimg verifies that the shim's ARM64 header describes the whole
+blob (shim + firmware volume), but BootShim.S stores FD_SIZE verbatim, so
+the check cannot pass for any device with requires_kernel_header = true.
+The OnePlus 6 bootloader (ABL, boot_a header_version 1) loads a gzip
+kernel blob without checking an embedded ARM64 header -- the same shape
+the community enchilada UEFI boots use. Build the shim without the header
+so the packed image matches what the bootloader loads.
+
+The unixnu check stays authoritative for the header layout itself; this
+only opts enchilada out of a header the bootloader never inspects.
+---
+ Resources/Configs/enchilada.toml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Resources/Configs/enchilada.toml b/Resources/Configs/enchilada.toml
+index 1111111..2222222 100644
+--- a/Resources/Configs/enchilada.toml
++++ b/Resources/Configs/enchilada.toml
+@@ -2,7 +2,7 @@
+ # Boot Shim Configs
+ #
+ [boot_shim]
+-requires_kernel_header = true
++requires_kernel_header = false
+
+ #
+ # UEFI FD Configs

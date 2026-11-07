@@ -286,12 +286,17 @@ jobs:
               sha256sum "$SHIM"
               git -C ../Mu-Silicium apply --check "$SHIM"
               git -C ../Mu-Silicium apply "$SHIM"
-              # The device tree is the compiled enchilada DTB from the device repo.
+              # The firmware FDT is what Mu-Silicium's SEC/PlatformPei reads for the
+              # DRAM map, reserved-memory and UART. Mu ships the full enchilada tree
+              # (555398 bytes, the same size the community boot-enchilada.img appends);
+              # the format2 device tree is a 2697-byte working draft and starves the
+              # firmware, which then hangs before display or USB init. Use Mu's tree
+              # for the firmware FDT and keep ours for the UniXNU ADT.
               # The community images boot with a non-empty placeholder ramdisk
               # (edk2-msm build.sh writes a one-byte file); keep that shape.
               echo > "$RUNNER_TEMP/ramdisk"
-              DTB=$GITHUB_WORKSPACE/device/dts/enchilada.dtb
-              test -f "$DTB" || { echo "::error::device dts/enchilada.dtb missing"; exit 1; }
+              DTB=../Mu-Silicium/Resources/DTBs/enchilada.dtb
+              test -f "$DTB" || { echo "::error::Mu-Silicium firmware FDT missing: $DTB"; exit 1; }
               sha256sum "$DTB"
               python3 ./unixnu bootimg --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium \
                 --fd "$FD" --dtb "$DTB" --ramdisk "$RUNNER_TEMP/ramdisk" -o ../UniXNU/out/boot/boot.img

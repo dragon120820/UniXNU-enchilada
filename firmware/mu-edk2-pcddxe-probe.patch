@@ -1,51 +1,59 @@
-diff --git a/MdeModulePkg/Library/PcdDatabaseLoaderLib/Dxe/PcdDatabaseLoaderLibDxe.c b/MdeModulePkg/Library/PcdDatabaseLoaderLib/Dxe/PcdDatabaseLoaderLibDxe.c
-index 7bbc8c1..851a82c 100644
---- a/MdeModulePkg/Library/PcdDatabaseLoaderLib/Dxe/PcdDatabaseLoaderLibDxe.c
-+++ b/MdeModulePkg/Library/PcdDatabaseLoaderLib/Dxe/PcdDatabaseLoaderLibDxe.c
-@@ -50,6 +50,13 @@ PcdDatabaseLoaderLoad (
-              &DxePcdDatabaseBinarySize
-              );
- 
-+  DEBUG ((
-+    DEBUG_ERROR,
-+    "PCDPROBE: GetSectionFromFfs(EFI_SECTION_RAW) = %r, binary %p, size %x\n",
-+    Status,
-+    DxePcdDatabaseBinary,
-+    DxePcdDatabaseBinarySize
-+    ));
-   ASSERT_EFI_ERROR (Status);
- 
-   return DxePcdDatabaseBinary;
-diff --git a/MdeModulePkg/Universal/PCD/Dxe/Pcd.c b/MdeModulePkg/Universal/PCD/Dxe/Pcd.c
-index 0e37081..98445d1 100644
---- a/MdeModulePkg/Universal/PCD/Dxe/Pcd.c
-+++ b/MdeModulePkg/Universal/PCD/Dxe/Pcd.c
-@@ -132,8 +132,12 @@ PcdDxeInit (
- 
-   ASSERT_PROTOCOL_ALREADY_INSTALLED (NULL, &gPcdProtocolGuid);
- 
-+  DEBUG ((DEBUG_ERROR, "PCDPROBE: PcdDxeInit entered, image handle %p\n", ImageHandle));
+diff --git a/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c b/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c
+index 4c9df94..fcb6749 100644
+--- a/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c
++++ b/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c
+@@ -1495,4 +1495,42 @@ CoreDisplayDiscoveredNotDispatched (
+       DEBUG ((DEBUG_LOAD, "Driver %g was discovered but not loaded!!\n", &DriverEntry->FileName));
+     }
+   }
 +
-   BuildPcdDxeDataBase ();
- 
-+  DEBUG ((DEBUG_ERROR, "PCDPROBE: Pcd database built, DxeDb %p\n", mPcdDatabase.DxeDb));
++  //
++  // PROBE: dump the dispatcher state of the drivers that starve when the PCD
++  // protocol is missing, plus whether that protocol exists at all. Printed
++  // last so it survives on a screen that only shows the tail of the log.
++  //
++  {
++    EFI_STATUS  ProbeStatus;
++    VOID        *ProbeInterface;
++    CONST EFI_GUID  mProbePcdDxeGuid = { 0x80CF7257, 0x87AB, 0x47F9, { 0xA3, 0xFE, 0xD5, 0x0B, 0x76, 0xD8, 0x95, 0x41 } };
 +
-   //
-   // Install PCD_PROTOCOL to handle dynamic type PCD
-   // Install EFI_PCD_PROTOCOL to handle dynamicEx type PCD
-@@ -146,6 +150,7 @@ PcdDxeInit (
-                   &mEfiPcdInstance,
-                   NULL
-                   );
-+  DEBUG ((DEBUG_ERROR, "PCDPROBE: InstallMultipleProtocolInterfaces(pcd) = %r\n", Status));
-   ASSERT_EFI_ERROR (Status);
- 
-   //
-@@ -160,6 +165,7 @@ PcdDxeInit (
-                   &mEfiGetPcdInfoInstance,
-                   NULL
-                   );
-+  DEBUG ((DEBUG_ERROR, "PCDPROBE: InstallMultipleProtocolInterfaces(getpcdinfo) = %r\n", Status));
-   ASSERT_EFI_ERROR (Status);
- 
-   //
++    LIST_ENTRY  *ProbeLink;
++    EFI_CORE_DRIVER_ENTRY  *ProbeEntry;
++    UINTN       ProbeTotal = 0;
++    UINTN       ProbeDependent = 0;
++
++    for (ProbeLink = mDiscoveredList.ForwardLink; ProbeLink != &mDiscoveredList; ProbeLink = ProbeLink->ForwardLink) {
++      ProbeEntry = CR (ProbeLink, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
++      ProbeTotal++;
++      if (ProbeEntry->Dependent) {
++        ProbeDependent++;
++      }
++    }
++
++    ProbeStatus = gBS->LocateProtocol (&gEfiPcdProtocolGuid, NULL, &ProbeInterface);
++    DEBUG ((DEBUG_ERROR, "PCDPROBE: discovered=%d dependent=%d LocateProtocol(gEfiPcdProtocol)=%r iface=%p\n", ProbeTotal, ProbeDependent, ProbeStatus, ProbeInterface));
++
++    for (ProbeLink = mDiscoveredList.ForwardLink; ProbeLink != &mDiscoveredList; ProbeLink = ProbeLink->ForwardLink) {
++      ProbeEntry = CR (ProbeLink, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
++      if (CompareGuid (&ProbeEntry->FileName, &gEfiVariableArchProtocolGuid) ||
++          CompareGuid (&ProbeEntry->FileName, &mProbePcdDxeGuid))
++      {
++        DEBUG ((DEBUG_ERROR, "PCDPROBE: Variable dep=%d init=%d sched=%d untrusted=%d depexerr=%d image=%p\n",
++          ProbeEntry->Dependent, ProbeEntry->Initialized, ProbeEntry->Scheduled,
++          ProbeEntry->Untrusted, ProbeEntry->DepexProtocolError, ProbeEntry->ImageHandle));
++      }
++    }
++  }
+ }
+diff --git a/MdeModulePkg/Core/Dxe/DxeMain.inf b/MdeModulePkg/Core/Dxe/DxeMain.inf
+index fa21505..ca06f5b 100644
+--- a/MdeModulePkg/Core/Dxe/DxeMain.inf
++++ b/MdeModulePkg/Core/Dxe/DxeMain.inf
+@@ -178,6 +178,7 @@
+   gEfiTimerArchProtocolGuid                     ## CONSUMES
+   gEfiVariableWriteArchProtocolGuid             ## CONSUMES
+   gEfiVariableArchProtocolGuid                  ## CONSUMES
++  gEfiPcdProtocolGuid                           ## CONSUMES                  ## PROBE
+   gEfiCapsuleArchProtocolGuid                   ## CONSUMES
+   gEfiWatchdogTimerArchProtocolGuid             ## CONSUMES
+   gMemoryProtectionDebugProtocolGuid            ## SOMETIMES_PRODUCES        ## MU_CHANGE

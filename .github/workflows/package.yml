@@ -276,20 +276,25 @@ jobs:
               python3 ./unixnu build firmware --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium
               FD=$(ls ../Mu-Silicium/Build/enchiladaPkg/*_CLANGPDB/FV/SILICIUM_UEFI.fd)
               sha256sum "$FD"
-              # unixnu bootimg verifies the shim's ARM64 header against shim+FD size,
-              # but BootShim.S stores FD_SIZE verbatim, so the check cannot pass with
-              # requires_kernel_header=true. The OnePlus 6 ABL never inspects that
-              # header, so drop it for this board (a dedicated Mu patch, checked in).
-              NOHDR=$GITHUB_WORKSPACE/device/firmware/mu-silicium-enchilada-no-kernel-header.patch
-              sha256sum "$NOHDR"
-              git -C ../Mu-Silicium apply --check "$NOHDR"
-              git -C ../Mu-Silicium apply "$NOHDR"
+              # The ABL inflates the gzip kernel package and expects an ARM64 Image
+              # header (magic at offset 56). BootShim.S stores FD_SIZE verbatim as
+              # Image Size while the protocol (and unixnu bootimg's self-check) want
+              # shim+FD total, so patch the shim to emit the correct field
+              # (a dedicated Mu patch, checked in). Upstream keeps
+              # requires_kernel_header = true, as every working device does.
+              SHIM=$GITHUB_WORKSPACE/device/firmware/mu-silicium-bootshim-image-header.patch
+              sha256sum "$SHIM"
+              git -C ../Mu-Silicium apply --check "$SHIM"
+              git -C ../Mu-Silicium apply "$SHIM"
               # The device tree is the compiled enchilada DTB from the device repo.
+              # The community images boot with a non-empty placeholder ramdisk
+              # (edk2-msm build.sh writes a one-byte file); keep that shape.
+              echo > "$RUNNER_TEMP/ramdisk"
               DTB=$GITHUB_WORKSPACE/device/dts/enchilada.dtb
               test -f "$DTB" || { echo "::error::device dts/enchilada.dtb missing"; exit 1; }
               sha256sum "$DTB"
               python3 ./unixnu bootimg --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium \
-                --fd "$FD" --dtb "$DTB" --ramdisk none -o ../UniXNU/out/boot/boot.img
+                --fd "$FD" --dtb "$DTB" --ramdisk "$RUNNER_TEMP/ramdisk" -o ../UniXNU/out/boot/boot.img
               ls -l ../UniXNU/out/boot/
               sha256sum ../UniXNU/out/boot/boot.img
               cat ../UniXNU/out/boot/boot.json

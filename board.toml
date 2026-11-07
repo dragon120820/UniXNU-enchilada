@@ -199,7 +199,7 @@ ramdisk_offset = 0x1000000
 tags_offset = 0x100
 
 [bootimg.image]
-header_version = 0
+header_version = 1
 base = 0x0
 
 [payload]

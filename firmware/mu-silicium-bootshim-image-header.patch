@@ -1,0 +1,31 @@
+From: UniXNU-enchilada board
+Subject: [PATCH] enchilada: give the boot shim a correct ARM64 image header
+
+The OnePlus 6 ABL inflates the gzip kernel package and expects an ARM64
+Image header ("ARM\x64" at offset 56, text_offset, image_size) in the
+inflated blob; the community enchilada UEFI images provide it through
+BootShim.S with requires_kernel_header = true.  Our first image shipped a
+headerless shim (a patch dropped the header because unixnu bootimg's shim
+self-check could not pass), so ABL classified the blob as a 32-bit kernel
+and dead-looped before leaving fastboot.
+
+Keep the header and fix the field that made the self-check impossible:
+BootShim.S stores FD_SIZE verbatim as Image Size, but the ARM64 boot
+protocol and the self-check want the size of the whole image,
+shim + firmware volume.  (_Payload - _Head) is the shim length the
+assembler already knows, so the field stays correct for any FD size.
+---
+ BootShim/BootShim.S | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/BootShim/BootShim.S b/BootShim/BootShim.S
+index 1111111..2222222 100644
+--- a/BootShim/BootShim.S
++++ b/BootShim/BootShim.S
+@@ -9,5 +9,5 @@
+ _StackSize:
+-  .quad FD_SIZE         /* Image Size */
++  .quad FD_SIZE + (_Payload - _Head) /* Image Size = shim + FD */
+   .quad 0               /* Flags */
+   .quad 0               /* Reserved */
+   .quad 0               /* Reserved */

@@ -258,6 +258,10 @@ jobs:
               python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
               python3 ./unixnu build firmware --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium
               ls -l ../Mu-Silicium/Build/enchiladaPkg/*_CLANGPDB/FV/SILICIUM_UEFI.fd
+              # The FD itself is not uploaded (logs only), so the hash has to be
+              # printed here: it is the only way to record a firmware identity
+              # without publishing the bytes.
+              sha256sum ../Mu-Silicium/Build/enchiladaPkg/*_CLANGPDB/FV/SILICIUM_UEFI.fd
               ;;
             package)
               # The package stage also builds package/ (the UniXNU.efi applications)

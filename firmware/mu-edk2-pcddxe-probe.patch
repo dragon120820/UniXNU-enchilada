@@ -1,26 +1,28 @@
 diff --git a/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c b/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c
-index 4c9df94..fcb6749 100644
+index 4c9df94..ec0b3e0 100644
 --- a/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c
 +++ b/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c
-@@ -1495,4 +1495,42 @@ CoreDisplayDiscoveredNotDispatched (
+@@ -1495,4 +1495,48 @@ CoreDisplayDiscoveredNotDispatched (
        DEBUG ((DEBUG_LOAD, "Driver %g was discovered but not loaded!!\n", &DriverEntry->FileName));
      }
    }
-+
 +  //
 +  // PROBE: dump the dispatcher state of the drivers that starve when the PCD
 +  // protocol is missing, plus whether that protocol exists at all. Printed
 +  // last so it survives on a screen that only shows the tail of the log.
 +  //
 +  {
-+    EFI_STATUS  ProbeStatus;
-+    VOID        *ProbeInterface;
-+    CONST EFI_GUID  mProbePcdDxeGuid = { 0x80CF7257, 0x87AB, 0x47F9, { 0xA3, 0xFE, 0xD5, 0x0B, 0x76, 0xD8, 0x95, 0x41 } };
-+
-+    LIST_ENTRY  *ProbeLink;
++    EFI_STATUS      ProbeStatus;
++    VOID            *ProbeInterface;
++    LIST_ENTRY      *ProbeLink;
 +    EFI_CORE_DRIVER_ENTRY  *ProbeEntry;
-+    UINTN       ProbeTotal = 0;
-+    UINTN       ProbeDependent = 0;
++    UINTN           ProbeTotal = 0;
++    UINTN           ProbeDependent = 0;
++    CONST EFI_GUID  ProbePcdDxeGuid = { 0x80CF7257, 0x87AB, 0x47F9, { 0xA3, 0xFE, 0xD5, 0x0B, 0x76, 0xD8, 0x95, 0x41 } };
++    CONST EFI_GUID  ProbeMonoGuid   = { 0xFCABE6A7, 0x7953, 0x4A84, { 0xB7, 0xEC, 0xD2, 0x9E, 0x89, 0xB6, 0x2E, 0x87 } };
++    CONST EFI_GUID  ProbeResetGuid  = { 0x4B28E4C7, 0xFF36, 0x4E10, { 0x93, 0xCF, 0xA8, 0x21, 0x59, 0xE7, 0x77, 0xC5 } };
++    CONST EFI_GUID  ProbeRtcGuid    = { 0xB336F62D, 0x4135, 0x4A55, { 0xAE, 0x4E, 0x49, 0x71, 0xBB, 0xF0, 0x88, 0x5D } };
++    CONST EFI_GUID  ProbeCapsuleGuid = { 0x42857F0A, 0x13F2, 0x4B21, { 0x8A, 0x23, 0x53, 0xD3, 0xF7, 0x14, 0xB8, 0x40 } };
 +
 +    for (ProbeLink = mDiscoveredList.ForwardLink; ProbeLink != &mDiscoveredList; ProbeLink = ProbeLink->ForwardLink) {
 +      ProbeEntry = CR (ProbeLink, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
@@ -36,11 +38,15 @@ index 4c9df94..fcb6749 100644
 +    for (ProbeLink = mDiscoveredList.ForwardLink; ProbeLink != &mDiscoveredList; ProbeLink = ProbeLink->ForwardLink) {
 +      ProbeEntry = CR (ProbeLink, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
 +      if (CompareGuid (&ProbeEntry->FileName, &gEfiVariableArchProtocolGuid) ||
-+          CompareGuid (&ProbeEntry->FileName, &mProbePcdDxeGuid))
++          CompareGuid (&ProbeEntry->FileName, &ProbePcdDxeGuid) ||
++          CompareGuid (&ProbeEntry->FileName, &ProbeMonoGuid) ||
++          CompareGuid (&ProbeEntry->FileName, &ProbeResetGuid) ||
++          CompareGuid (&ProbeEntry->FileName, &ProbeRtcGuid) ||
++          CompareGuid (&ProbeEntry->FileName, &ProbeCapsuleGuid))
 +      {
-+        DEBUG ((DEBUG_ERROR, "PCDPROBE: Variable dep=%d init=%d sched=%d untrusted=%d depexerr=%d image=%p\n",
-+          ProbeEntry->Dependent, ProbeEntry->Initialized, ProbeEntry->Scheduled,
-+          ProbeEntry->Untrusted, ProbeEntry->DepexProtocolError, ProbeEntry->ImageHandle));
++        DEBUG ((DEBUG_ERROR, "PCDPROBE: %g dep=%d init=%d sched=%d untrusted=%d depexerr=%d fv=%p image=%p\n",
++          &ProbeEntry->FileName, ProbeEntry->Dependent, ProbeEntry->Initialized, ProbeEntry->Scheduled,
++          ProbeEntry->Untrusted, ProbeEntry->DepexProtocolError, ProbeEntry->Fv, ProbeEntry->ImageHandle));
 +      }
 +    }
 +  }
@@ -57,3 +63,45 @@ index fa21505..ca06f5b 100644
    gEfiCapsuleArchProtocolGuid                   ## CONSUMES
    gEfiWatchdogTimerArchProtocolGuid             ## CONSUMES
    gMemoryProtectionDebugProtocolGuid            ## SOMETIMES_PRODUCES        ## MU_CHANGE
+diff --git a/MdeModulePkg/Universal/Variable/RuntimeDxe/VariableDxe.c b/MdeModulePkg/Universal/Variable/RuntimeDxe/VariableDxe.c
+index 940af37..0d4f1c3 100644
+--- a/MdeModulePkg/Universal/Variable/RuntimeDxe/VariableDxe.c
++++ b/MdeModulePkg/Universal/Variable/RuntimeDxe/VariableDxe.c
+@@ -586,7 +586,9 @@ VariableServiceInitialize (
+   EFI_EVENT   ReadyToBootEvent;
+   EFI_EVENT   EndOfDxeEvent;
+ 
++  DEBUG ((DEBUG_ERROR, "VPROBE: VariableServiceInitialize entered\n"));
+   Status = VariableCommonInitialize ();
++  DEBUG ((DEBUG_ERROR, "VPROBE: VariableCommonInitialize = %r\n", Status));
+   ASSERT_EFI_ERROR (Status);
+ 
+   Status = gBS->InstallMultipleProtocolInterfaces (
+@@ -619,6 +621,7 @@ VariableServiceInitialize (
+                   EFI_NATIVE_INTERFACE,
+                   NULL
+                   );
++  DEBUG ((DEBUG_ERROR, "VPROBE: InstallProtocolInterface(VariableArch) = %r handle=%p\n", Status, mHandle));
+   ASSERT_EFI_ERROR (Status);
+ 
+   if (!PcdGetBool (PcdEmuVariableNvModeEnable)) {
+@@ -675,6 +678,7 @@ VariableServiceInitialize (
+ 
+   // Register and initialize the VariablePolicy engine.
+   Status = InitVariablePolicyLib (VariableServiceGetVariable);
++  DEBUG ((DEBUG_ERROR, "VPROBE: InitVariablePolicyLib = %r\n", Status));
+   ASSERT_EFI_ERROR (Status);
+   Status = VarCheckRegisterSetVariableCheckHandler (ValidateSetVariable);
+   ASSERT_EFI_ERROR (Status);
+@@ -684,9 +688,11 @@ VariableServiceInitialize (
+                   &mVariablePolicyProtocol,
+                   NULL
+                   );
++  DEBUG ((DEBUG_ERROR, "VPROBE: Install(VariablePolicyProtocol) = %r\n", Status));
+   ASSERT_EFI_ERROR (Status);
+   Status = InitializeVariablePolicyLocking (&mVariablePolicyProtocol);  // MU_CHANGE - Isolate the VariablePolicy locking event into its own code.
+   ASSERT_EFI_ERROR (Status);                                            // MU_CHANGE - Isolate the VariablePolicy locking event into its own code.
+ 
++  DEBUG ((DEBUG_ERROR, "VPROBE: VariableServiceInitialize done\n"));
+   return EFI_SUCCESS;
+ }

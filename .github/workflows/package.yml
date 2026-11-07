@@ -30,9 +30,9 @@ on:
         type: string
         default: "main"
       mode:
-        description: "check = preflight + patches only; check-deps also fetches every module and the IPSW; kernel = compile and prelink XNU; firmware = EDK II build of Mu-Silicium with the UniXNU payload"
+        description: "check = preflight + patches only; check-deps also fetches every module and the IPSW; kernel = compile and prelink XNU; firmware = EDK II build of Mu-Silicium with the UniXNU payload; bootimg = pack the firmware into a fastboot-boot image"
         type: choice
-        options: ["check", "check-deps", "kernel", "firmware", "package"]
+        options: ["check", "check-deps", "kernel", "firmware", "bootimg", "package"]
         default: "check"
       xcode:
         description: "Xcode version of the macos-26 image"
@@ -186,6 +186,9 @@ jobs:
               -o "$RUNNER_TEMP/enchilada.dtb" dts/enchilada.dts
           ls -l "$RUNNER_TEMP/enchilada.dtb"
           fdtdump "$RUNNER_TEMP/enchilada.dtb" | head -n 20
+          # The bootimg mode needs this DTB later in a different step; park it
+          # where the case block can find it ($GITHUB_WORKSPACE/device/dts/).
+          cp "$RUNNER_TEMP/enchilada.dtb" dts/enchilada.dtb
 
       # B7: the upstream UniXNU commit pinned here records two submodule commits
       # that do not exist on the remotes, so `git submodule update` fails with
@@ -263,6 +266,26 @@ jobs:
               # without publishing the bytes.
               sha256sum ../Mu-Silicium/Build/enchiladaPkg/*_CLANGPDB/FV/SILICIUM_UEFI.fd
               ;;
+            bootimg)
+              # Pack the built FD into an Android boot image for `fastboot boot` only.
+              # This writes nothing to any partition; the device-side stage (actually
+              # running fastboot boot) is a separate, user-authorised step.
+              cd ../UniXNU
+              python3 ./unixnu fetch --device ../device
+              python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
+              python3 ./unixnu build firmware --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium
+              FD=$(ls ../Mu-Silicium/Build/enchiladaPkg/*_CLANGPDB/FV/SILICIUM_UEFI.fd)
+              sha256sum "$FD"
+              # The device tree is the compiled enchilada DTB from the device repo.
+              DTB=$GITHUB_WORKSPACE/device/dts/enchilada.dtb
+              test -f "$DTB" || { echo "::error::device dts/enchilada.dtb missing"; exit 1; }
+              sha256sum "$DTB"
+              python3 ./unixnu bootimg --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium \
+                --fd "$FD" --dtb "$DTB" --ramdisk none -o ../UniXNU/out/boot/boot.img
+              ls -l ../UniXNU/out/boot/
+              sha256sum ../UniXNU/out/boot/boot.img
+              cat ../UniXNU/out/boot/boot.json
+              ;;
             package)
               # The package stage also builds package/ (the UniXNU.efi applications)
               # and needs a firmware checkout for the payload. mode=firmware covers
@@ -298,3 +321,13 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
           path: ${{ runner.temp }}/logs
+      - name: Upload the boot image (bootimg mode only)
+        if: ${{ inputs.mode == 'bootimg' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-img-os-${{ inputs.os }}
+          path: |
+            UniXNU/out/**/boot/boot.img
+            UniXNU/out/**/boot/boot.json
+          if-no-files-found: error
+

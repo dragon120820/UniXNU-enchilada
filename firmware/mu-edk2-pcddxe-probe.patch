@@ -1,0 +1,51 @@
+diff --git a/MdeModulePkg/Library/PcdDatabaseLoaderLib/Dxe/PcdDatabaseLoaderLibDxe.c b/MdeModulePkg/Library/PcdDatabaseLoaderLib/Dxe/PcdDatabaseLoaderLibDxe.c
+index 7bbc8c1..851a82c 100644
+--- a/MdeModulePkg/Library/PcdDatabaseLoaderLib/Dxe/PcdDatabaseLoaderLibDxe.c
++++ b/MdeModulePkg/Library/PcdDatabaseLoaderLib/Dxe/PcdDatabaseLoaderLibDxe.c
+@@ -50,6 +50,13 @@ PcdDatabaseLoaderLoad (
+              &DxePcdDatabaseBinarySize
+              );
+ 
++  DEBUG ((
++    DEBUG_ERROR,
++    "PCDPROBE: GetSectionFromFfs(EFI_SECTION_RAW) = %r, binary %p, size %x\n",
++    Status,
++    DxePcdDatabaseBinary,
++    DxePcdDatabaseBinarySize
++    ));
+   ASSERT_EFI_ERROR (Status);
+ 
+   return DxePcdDatabaseBinary;
+diff --git a/MdeModulePkg/Universal/PCD/Dxe/Pcd.c b/MdeModulePkg/Universal/PCD/Dxe/Pcd.c
+index 0e37081..98445d1 100644
+--- a/MdeModulePkg/Universal/PCD/Dxe/Pcd.c
++++ b/MdeModulePkg/Universal/PCD/Dxe/Pcd.c
+@@ -132,8 +132,12 @@ PcdDxeInit (
+ 
+   ASSERT_PROTOCOL_ALREADY_INSTALLED (NULL, &gPcdProtocolGuid);
+ 
++  DEBUG ((DEBUG_ERROR, "PCDPROBE: PcdDxeInit entered, image handle %p\n", ImageHandle));
++
+   BuildPcdDxeDataBase ();
+ 
++  DEBUG ((DEBUG_ERROR, "PCDPROBE: Pcd database built, DxeDb %p\n", mPcdDatabase.DxeDb));
++
+   //
+   // Install PCD_PROTOCOL to handle dynamic type PCD
+   // Install EFI_PCD_PROTOCOL to handle dynamicEx type PCD
+@@ -146,6 +150,7 @@ PcdDxeInit (
+                   &mEfiPcdInstance,
+                   NULL
+                   );
++  DEBUG ((DEBUG_ERROR, "PCDPROBE: InstallMultipleProtocolInterfaces(pcd) = %r\n", Status));
+   ASSERT_EFI_ERROR (Status);
+ 
+   //
+@@ -160,6 +165,7 @@ PcdDxeInit (
+                   &mEfiGetPcdInfoInstance,
+                   NULL
+                   );
++  DEBUG ((DEBUG_ERROR, "PCDPROBE: InstallMultipleProtocolInterfaces(getpcdinfo) = %r\n", Status));
+   ASSERT_EFI_ERROR (Status);
+ 
+   //

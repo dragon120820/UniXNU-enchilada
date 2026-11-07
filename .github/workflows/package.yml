@@ -136,6 +136,20 @@ jobs:
           git -C Mu-Silicium apply --check "$pcddxe"
           git -C Mu-Silicium apply "$pcddxe"
           git -C Mu-Silicium --no-pager diff --stat | tail -2
+          # The PCD probe: DEBUG prints inside PcdDxe's entry path and inside
+          # the PCD database loader, so the next boot says whether the driver
+          # ran and whether GetSectionFromFfs found the database. firmware.py
+          # applies [firmware] patches relative to the Mu-Silicium checkout and
+          # against the edk2 tree, so the patch has to sit in Resources/MuPatches/.
+          probe=$GITHUB_WORKSPACE/device/firmware/mu-edk2-pcddxe-probe.patch
+          [ -f "$probe" ] || { echo "::error::$probe missing"; exit 1; }
+          sha256sum "$probe"
+          # The patch targets edk2, not Mu-Silicium, so it is not applied here:
+          # firmware.py applies [firmware] patches with -C <edk2> but reads the
+          # file from inside the Mu-Silicium checkout, which is why it moves.
+          cp "$probe" Mu-Silicium/Resources/MuPatches/mu-edk2-pcddxe-probe.patch
+          ls -l Mu-Silicium/Resources/MuPatches/mu-edk2-pcddxe-probe.patch
+          ls -l Mu-Silicium/Resources/MuPatches/mu-edk2-pcddxe-probe.patch
           # UNIXNU_PAYLOAD=1 must reach the EDK II build through board.toml
           # [firmware.defines]; assert the device repository actually carries it
           # so a firmware built without the payload cannot pass silently.

@@ -145,6 +145,13 @@ patches = [
   "Resources/MuPatches/Boot-Manager.patch",
   "Resources/MuPatches/Timer.patch",
   "Resources/MuPatches/Usb-Bus.patch",
+  # Diagnostic only, 2026-11-07: DEBUG prints inside PcdDxe's entry path and
+  # inside the PCD database loader. The fifth boot reached the DXE self-check
+  # with six arch protocols missing, which means gEfiPcdProtocolGuid was never
+  # installed even though PcdDxe's as-built depex is TRUE and the identical
+  # depex works in the community boot-enchilada-2301.1 image. This probe is
+  # removed once the log says which of the two paths fails.
+  "Resources/MuPatches/mu-edk2-pcddxe-probe.patch",
 ]
 
 # Submodules firmware.py initialises before the build.  Mu_Basecore is left out

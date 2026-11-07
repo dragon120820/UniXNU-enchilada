@@ -1,0 +1,123 @@
+diff --git a/Silicon/Silicium/SiliciumPkg/Sec/AArch64/ModuleEntryPoint.S b/Silicon/Silicium/SiliciumPkg/Sec/AArch64/ModuleEntryPoint.S
+index 0c05ffa..1a6012d 100644
+--- a/Silicon/Silicium/SiliciumPkg/Sec/AArch64/ModuleEntryPoint.S
++++ b/Silicon/Silicium/SiliciumPkg/Sec/AArch64/ModuleEntryPoint.S
+@@ -13,6 +13,12 @@
+ .set CTRL_SPAN_BIT, BIT23
+ 
+ ASM_FUNC (_ModuleEntryPoint)
++  // Keep x0 for the platform. A Linux-style boot loader passes the physical
++  // address of a flattened device tree there, and everything below this point
++  // overwrites x0. The slot lives in this section, which is in RAM by now.
++  adr   x1, ASM_PFX (gSecEntryArg0)
++  str   x0, [x1]
++
+   // Do Platform Specific Initialization
+   bl    ASM_PFX (PlatformAssemblyInitialize)
+ 
+@@ -61,3 +67,9 @@ ASM_PFX (MainEntryPoint):
+ 
+   // Do Infinite Spin
+   b     .
++
++  // First argument of the previous stage, written once at entry.
++  .align 3
++  .global ASM_PFX (gSecEntryArg0)
++ASM_PFX (gSecEntryArg0):
++  .quad 0
+diff --git a/Silicon/Silicium/SiliciumPkg/Sec/Sec.c b/Silicon/Silicium/SiliciumPkg/Sec/Sec.c
+index 8d586b3..1270e84 100644
+--- a/Silicon/Silicium/SiliciumPkg/Sec/Sec.c
++++ b/Silicon/Silicium/SiliciumPkg/Sec/Sec.c
+@@ -18,6 +18,11 @@
+ 
+ #include "Sec.h"
+ 
++//
++// What the previous stage passed in x0, captured by ModuleEntryPoint.S.
++//
++extern UINT64  gSecEntryArg0;
++
+ #ifndef MDEPKG_NDEBUG
+ STATIC
+ VOID
+@@ -130,6 +135,51 @@ SecMain (VOID)
+     return;
+   }
+ 
++  //
++  // Pass on what the previous stage handed over in x0 (the address of a device
++  // tree, for a Linux-style boot loader) so a DXE driver can use it. UniXNU's
++  // UniXNURamDiskDxe reads this HOB to learn where the initrd sits; without it
++  // it gives up and no payload volume is published.
++  //
++  {
++    UINT64  EntryArg;
++
++    EntryArg = gSecEntryArg0;
++
++    if ((EntryArg != 0) && ((EntryArg & 3) == 0)) {
++      //
++      // Reserve the tree. Nothing marks those bytes as owned, so DXE would treat
++      // them as free memory and map an image straight over them; on fuxi the
++      // DarwinBoot image landed on the tree and destroyed it.
++      //
++      CONST UINT8  *Hdr;
++      UINT32        DtSize;
++
++      Hdr    = (CONST UINT8 *)(UINTN)EntryArg;
++      DtSize = ((UINT32)Hdr[4] << 24) | ((UINT32)Hdr[5] << 16) | ((UINT32)Hdr[6] << 8) | (UINT32)Hdr[7];
++
++      if ((Hdr[0] == 0xD0) && (Hdr[1] == 0x0D) && (Hdr[2] == 0xFE) && (Hdr[3] == 0xED) &&
++          (DtSize > 0x1000) && (DtSize < 0x400000))
++      {
++        UINT64  DtBase;
++        UINT64  DtEnd;
++
++        DtBase = EntryArg & ~(UINT64)(EFI_PAGE_SIZE - 1);
++        DtEnd  = (EntryArg + DtSize + EFI_PAGE_SIZE - 1) & ~(UINT64)(EFI_PAGE_SIZE - 1);
++
++        BuildMemoryAllocationHob (DtBase, DtEnd - DtBase, EfiReservedMemoryType);
++        DEBUG ((EFI_D_WARN, "SEC: device tree 0x%lx size 0x%x reserved 0x%lx..0x%lx\n", EntryArg, DtSize, DtBase, DtEnd));
++      } else {
++        DEBUG ((EFI_D_WARN, "SEC: entry argument 0x%lx is not a device tree\n", EntryArg));
++      }
++    } else {
++      DEBUG ((EFI_D_WARN, "SEC: no entry argument, the previous stage left x0 at 0x%lx\n", EntryArg));
++    }
++
++    BuildGuidDataHob (&gSiliciumEntryArgHobGuid, &EntryArg, sizeof (EntryArg));
++    DEBUG ((EFI_D_WARN, "SEC: entry argument HOB published (x0 = 0x%lx)\n", EntryArg));
++  }
++
+   // Run Library Cconstructors
+   ProcessLibraryConstructorList ();
+ 
+diff --git a/Silicon/Silicium/SiliciumPkg/Sec/Sec.inf b/Silicon/Silicium/SiliciumPkg/Sec/Sec.inf
+index 79afd19..3a0a8a9 100644
+--- a/Silicon/Silicium/SiliciumPkg/Sec/Sec.inf
++++ b/Silicon/Silicium/SiliciumPkg/Sec/Sec.inf
+@@ -52,6 +52,7 @@
+ 
+ [Guids]
+   gArmMpCoreInfoGuid
++  gSiliciumEntryArgHobGuid
+ 
+ [Pcd]
+   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
+diff --git a/Silicon/Silicium/SiliciumPkg/SiliciumPkg.dec b/Silicon/Silicium/SiliciumPkg/SiliciumPkg.dec
+index 99cd697..361f0fc 100644
+--- a/Silicon/Silicium/SiliciumPkg/SiliciumPkg.dec
++++ b/Silicon/Silicium/SiliciumPkg/SiliciumPkg.dec
+@@ -10,6 +10,11 @@
+ [Guids]
+   gSiliciumPkgTokenSpaceGuid          = { 0x055720A6, 0xA739, 0x0047, { 0xBE, 0xC1, 0x67, 0xFC, 0x38, 0x34, 0x54, 0x53 } }
+ 
++  # HOB holding the first argument (x0) the previous stage entered SEC with.
++  # A Linux-style boot loader passes the physical address of a flattened DT here.
++  # UniXNURamDiskDxe in the UniXNU payload looks this HOB up to find the initrd.
++  gSiliciumEntryArgHobGuid            = { 0xDAEE82E6, 0x8090, 0x4E72, { 0xBF, 0xB9, 0x78, 0xC1, 0x3C, 0xD4, 0xE3, 0x59 } }
++
+ [Protocols]
+   gKeypadDeviceProtocolGuid           = { 0xA412C1AC, 0x0295, 0x4AE3, { 0xB5, 0x9F, 0x52, 0x23, 0x1F, 0x26, 0x55, 0x4D } }
+ 

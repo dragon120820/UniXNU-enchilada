@@ -136,6 +136,19 @@ jobs:
           git -C Mu-Silicium apply --check "$pcddxe"
           git -C Mu-Silicium apply "$pcddxe"
           git -C Mu-Silicium --no-pager diff --stat | tail -2
+          # Hand the bootloader's device tree to DXE. The stock SEC discards the
+          # x0 the previous stage enters with and never builds
+          # gSiliciumEntryArgHobGuid, so UniXNURamDiskDxe finds no HOB, gives up
+          # and publishes no payload volume: the menu shows the built-in
+          # configuration and reports "no boot entry found" even when the
+          # ramdisk is there. Same fault as marble, recorded in UniXNU's
+          # docs/devices/marble-milacy.md; the fix follows uefi-fuxi.
+          secarg=$PWD/device/firmware/mu-silicium-sec-entryarg.patch
+          [ -f "$secarg" ] || { echo "::error::$secarg missing"; exit 1; }
+          sha256sum "$secarg"
+          git -C Mu-Silicium apply --check "$secarg"
+          git -C Mu-Silicium apply "$secarg"
+          git -C Mu-Silicium --no-pager diff --stat | tail -2
           # The PCD probe: DEBUG prints inside PcdDxe's entry path and inside
           # the PCD database loader, so the next boot says whether the driver
           # ran and whether GetSectionFromFfs found the database. firmware.py

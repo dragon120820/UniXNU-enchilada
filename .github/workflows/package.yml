@@ -65,12 +65,17 @@ defaults:
 
 jobs:
   package:
-    # Pinned: macos-latest moves between images, and macos-26 carries the Xcode 26
-    # line the UniXNU build is developed against.
-    runs-on: macos-26
+    # Pinned, and pinned per mode.  macos-latest moves between images; the EDK II
+    # stage is developed against the Xcode 26 line that macos-26 carries, but the
+    # XNU stage cannot use it: Xcode 26's iig emits IORPC.kernelContent, a field
+    # xnu-8796's IORPC does not have, and DriverKit/OSObject.iig.cpp fails with
+    # "no member named 'kernelContent' in 'IORPC'" (run 42875463977).  The kernel
+    # is built on macos-15, whose Xcode 16 line matches the community CI that
+    # builds this exact kernel.
+    runs-on: ${{ (inputs.mode == 'kernel' || inputs.mode == 'payload') && 'macos-15' || 'macos-26' }}
     timeout-minutes: 240
     env:
-      DEVELOPER_DIR: /Applications/Xcode_${{ inputs.xcode }}.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_${{ (inputs.mode == 'kernel' || inputs.mode == 'payload') && '16.4' || inputs.xcode }}.app/Contents/Developer
       OS_PROFILE: ${{ inputs.os }}
       MODE: ${{ inputs.mode }}
 

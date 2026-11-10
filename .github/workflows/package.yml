@@ -344,13 +344,38 @@ jobs:
               cat ../UniXNU/out/boot/boot.json
               ;;
             package)
-              # The package stage also builds package/ (the UniXNU.efi applications)
-              # and needs a firmware checkout for the payload. mode=firmware covers
-              # the firmware half; this branch stays unimplemented until the two are
-              # merged behind one step.
-              echo "::error::the package stage is not implemented; use mode=firmware for the EDK II build"
-              exit 1
+              # Layer 3 of the porting guide: compile package/ (UniXNU.efi, UniXNUDxe.efi,
+              # UniXNURamDiskDxe.efi) with EDK II.  This is the boot manager the guide
+              # lists between the firmware and the loader, and it is the one product the
+              # bring-up procedures cannot do without: without it the firmware volume
+              # drops straight from UEFI to whatever the shim payload contains.
+              #
+              # It needs the edk2 refer tree with three submodules (BaseFdtLib/libfdt,
+              # MipiSysTLib/mipisyst, BrotliCompress/brotli) and the BaseTools host
+              # utilities.  None of that is a submodule of this repository, so they are
+              # initialised and built here rather than assumed.
+              cd ../UniXNU
+              python3 ./unixnu fetch --device ../device
+              python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
+              EDK2=$(ls -d ../UniXNU/out/feeds/mu_basecore-* | head -1)
+              test -f "$EDK2/MdePkg/MdePkg.dec" || { echo "::error::no edk2 tree: $EDK2"; exit 1; }
+              echo "edk2: $EDK2"
+              git -C "$EDK2" submodule update --init --depth 1 \
+                MdePkg/Library/BaseFdtLib/libfdt \
+                MdePkg/Library/MipiSysTLib/mipisyst \
+                BaseTools/Source/C/BrotliCompress/brotli
+              python3 ./unixnu build package --device ../device --os "$OS_PROFILE" --edk2 "$EDK2" --target RELEASE
+              # package.build() points UNIXNU_BUILD_DIR at the run's work directory, so
+              # the products land under out/<device>/<profile>/<config>/package/.
+              OUT=$(find ../UniXNU/out -type d -path '*/Build/Out/AARCH64-RELEASE' | head -1)
+              test -n "$OUT" && test -d "$OUT" || { echo "::error::package outputs not found"; exit 1; }
+              ls -l "$OUT"
+              for module in UniXNU UniXNUDxe UniXNURamDiskDxe; do
+                test -f "$OUT/$module.efi" || { echo "::error::$module.efi missing from $OUT"; exit 1; }
+                sha256sum "$OUT/$module.efi"
+              done
               ;;
+
           esac
 
       - name: Collect the logs

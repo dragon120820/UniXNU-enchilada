@@ -32,7 +32,7 @@ on:
       mode:
         description: "check = preflight + patches only; check-deps also fetches every module and the IPSW; kernel = compile and prelink XNU; firmware = EDK II build of Mu-Silicium with the UniXNU payload; bootimg = pack the firmware into a fastboot-boot image"
         type: choice
-        options: ["check", "check-deps", "kernel", "firmware", "bootimg", "package"]
+        options: ["check", "check-deps", "kernel", "firmware", "bootimg", "payload", "package"]
         default: "check"
       xcode:
         description: "Xcode version of the macos-26 image"
@@ -343,6 +343,27 @@ jobs:
               sha256sum ../UniXNU/out/boot/boot.img
               cat ../UniXNU/out/boot/boot.json
               ;;
+            payload)
+              # Layer 4 prerequisite: the official ADT and payload volume.  DarwinBoot
+              # demands a /chosen/memory-map placeholder for every input it is handed,
+              # and only scripts/unixnu/devicetree.py writes those.  This mode runs
+              # schema 2 (board.toml is schema_version = 2, so generate() compiles our
+              # board DTS with dtc) and produces the FAT volume that carries
+              # kernel.macho and kernel.macho.adt into the boot image ramdisk.
+              #
+              # It fails loudly when the board DTS cannot satisfy the generator: one
+              # contiguous DRAM range, /cpus with timebase-frequency and a PSCI method.
+              cd ../UniXNU
+              python3 ./unixnu fetch --device ../device
+              python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
+              python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE"
+              python3 ./unixnu build payload --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium \
+                --unique-chip-id 0000000000000000
+              ls -l ../UniXNU/out/*/*/*/payload/
+              cat ../UniXNU/out/*/*/*/payload/payload.json
+              sha256sum ../UniXNU/out/*/*/*/payload/payload.img
+              ;;
+
             package)
               # Layer 3 of the porting guide: compile package/ (UniXNU.efi, UniXNUDxe.efi,
               # UniXNURamDiskDxe.efi) with EDK II.  This is the boot manager the guide
@@ -377,6 +398,16 @@ jobs:
               ;;
 
           esac
+
+      - name: Upload the payload (payload mode only)
+        if: inputs.mode == 'payload'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unixnu-payload-${{ inputs.os }}
+          path: |
+            UniXNU/out/*/*/*/payload/payload.img
+            UniXNU/out/*/*/*/payload/payload.json
+          if-no-files-found: error
 
       - name: Collect the logs
         if: always()

@@ -17,6 +17,19 @@
 # those patches into a directory would silently do nothing.  Nothing is listed
 # below because no board patch has been ported and verified yet; an entry appears
 # here only once it applies cleanly to the pinned XNU revision.
+
+# iokitcpp-kernel-content.patch
+#     xnu-8796's struct IORPC has four fields; xnu-10063 added a fifth under
+#     #ifdef KERNEL (iokit/IOKit/IORPC.h).  The Xcode iig in the CI image
+#     generates DriverKit/*.iig.cpp against the newer ABI, so building the
+#     DriverKit sources of 8796 with iokitcpp (which config/MASTER:510 enables
+#     unconditionally) fails with "no member named kernelContent in IORPC".
+#     Run 42875463977 (macos-26/Xcode 26) and 42877902675 (macos-15/Xcode 16.4)
+#     both failed that way, so the SDK is not the variable.  The field is added
+#     to both copies of the header (iokit/IOKit and iokit/DriverKit, which are
+#     byte-identical in 8796) and kept behind the same KERNEL guard as upstream,
+#     so user-space IORPC keeps its old size.
+device:patches/xnu/iokitcpp-kernel-content.patch
 #
 # Candidates, to be ported one at a time with a test that proves the effect:
 #   device:patches/xnu/enchilada-arm64-no-pauth.patch

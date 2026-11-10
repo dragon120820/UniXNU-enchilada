@@ -36,6 +36,20 @@ CONFIG_XNU_BUILD_ARCHIVES=y
 # community series instead; see reports/STATUS.md 7.17.13.
 CONFIG_XNU_MACHINE_CONFIG="SWEET"
 
+# ---- toolchain SDK --------------------------------------------------------
+# makedefs/MakeInc.cmd derives iig from the SDK:
+#   IIG := $(shell $(XCRUN) -sdk $(SDKROOT) -find iig)
+# and the iPhoneOS SDK's iig emits DriverKit code that assigns
+# IORPC.kernelContent, a field xnu-8796 does not have.  CI runs 42875463977 and
+# 42877902675 both died on "no member named kernelContent in IORPC" after the
+# patch series applied cleanly, and switching the runner from macos-26 to
+# macos-15 (Xcode 26 -> 16.4) did not change it, because both ship an iPhoneOS
+# SDK with the newer iig.  scripts/build-xnu-4k-baseline.sh already reads
+# SDKROOT from XNU_SDKROOT with "iphoneos" as its default; macOS SDK carries
+# the ABI xnu-8796 was written against and is what installhdrs above and
+# blacktop/darwin-xnu-build use for their own iOS kernels.
+CONFIG_XNU_SDKROOT="macosx"
+
 # ---- OS profile switches ---------------------------------------------------
 CONFIG_XNU_TRUST_CACHE_RUNTIME=y
 CONFIG_XNU_SOURCE_MOCKFS=y

@@ -13,7 +13,7 @@ schema_version = 2
 name = "enchilada"
 soc = "SDM845"
 soc_source = "sdm845"
-os_profile = "ipados-17.7.11-21H461"
+os_profile = "ios-16.7.16-20H392"
 description = "OnePlus 6 (A6003), 8 GB RAM / 128 GB storage, arm64 only (no FEAT_PAuth)"
 kit = "enchilada"
 example = false
@@ -264,3 +264,4 @@ unixnu = "../UniXNU"
 
 [package.defconfig]
 "ipados-17.7.11-21H461" = "enchilada_defconfig"
+"ios-16.7.16-20H392" = "enchilada_defconfig"

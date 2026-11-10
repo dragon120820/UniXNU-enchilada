@@ -19,8 +19,8 @@ on:
       os:
         description: "OS profile of the images"
         type: choice
-        options: ["17", "26", "27"]
-        default: "17"
+        options: ["ios-16.7.16-20H392", "17", "26", "27"]
+        default: "ios-16.7.16-20H392"
       soc_repository:
         description: "SDM845 SoC layer as owner/name"
         type: string
@@ -38,6 +38,14 @@ on:
         description: "Xcode version of the macos-26 image"
         type: string
         default: "26.6"
+      unixnu_repository:
+        description: "UniXNU checkout as owner/name (a fork carrying profiles/os/ios-* )"
+        type: string
+        default: "dragon120820/UniXNU"
+      unixnu_ref:
+        description: "Ref of the UniXNU checkout"
+        type: string
+        default: "main"
 
 permissions:
   contents: read
@@ -77,7 +85,12 @@ jobs:
       - name: Check out UniXNU
         uses: actions/checkout@v4
         with:
-          repository: UniXNU/UniXNU
+          # A fork, not upstream: profiles/os/ there carries ios-16.7.16-20H392,
+          # the OS layer an iPhone X userspace needs.  Upstream ships iPadOS and
+          # macOS profiles only, and [board] os_profile names a directory under
+          # profiles/os/ (scripts/unixnu/profiles.py:19-30).
+          repository: ${{ inputs.unixnu_repository }}
+          ref: ${{ inputs.unixnu_ref }}
           path: UniXNU
 
       # feeds.toml reaches the SoC layer as `local = "../UniXNU-sdm845-common"`,
@@ -357,8 +370,13 @@ jobs:
               python3 ./unixnu fetch --device ../device
               python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
               python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE"
+              # The ADT generator refuses a zero platform seed ("Platform identity
+              # requires a nonzero u64 seed and u32 chip ID", devicetree.py:311-315),
+              # so pass a nonzero placeholder.  This is a bring-up value: the ADT node
+              # names this build, not the handset.  Run 42858923330 failed here with
+              # all-zeroes; the real chip identity comes later (HARDWARE_INVENTORY.md).
               python3 ./unixnu build payload --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium \
-                --unique-chip-id 0000000000000000
+                --unique-chip-id 0123456789abcdef
               ls -l ../UniXNU/out/*/*/*/payload/
               cat ../UniXNU/out/*/*/*/payload/payload.json
               sha256sum ../UniXNU/out/*/*/*/payload/payload.img

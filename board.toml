@@ -47,8 +47,16 @@ defconfig = "enchilada_defconfig"
 # here silently dropped the 56 arm64 patches and the 3 IPSW patches, which is exactly how
 # the first kernel run failed: the arch series carries local-availability.patch, the fix
 # for make_symbol_aliasing.sh looking for availability.pl inside the Xcode SDK.
+# The arch series is deliberately absent.  ports/arch/arm64/patches/xnu/series
+# was written against xnu-10063: 12 of its 56 patches do not apply to xnu-8796
+# (SPTM, the Exclave proxy, SystemOS mounting, the SystemOS cryptex view), and
+# stacking it on the community block rejects 151 of those 184 patches because
+# the two series are two implementations of the same layer.  Measured both
+# orders; see evidence/host/20261111_arch_patch_8796/patch_base_matrix.txt.
+# The OS profile now carries the community series in full, plus the three
+# official arch patches this tree still needs, which were measured to apply on
+# top of it.
 patch_series = [
-  "arch:patches/xnu/series",
   "soc:patches/xnu/series",
   "os:patches/xnu/series",
   "device:patches/xnu/series",

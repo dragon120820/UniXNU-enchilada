@@ -23,6 +23,19 @@ CONFIG_XNU_NATIVE_ARCH_TIMER=y
 CONFIG_XNU_NATIVE_PAN=y
 CONFIG_XNU_BUILD_ARCHIVES=y
 
+# ---- machine configuration ------------------------------------------------
+# The shared kernel step defaults to the Raspberry Pi 4 machine config, which
+# is not the one this board builds against.  The sweet-* patch block that makes
+# iOS 16 boot brings config/MASTER.arm64.sweet (open-source arm64 asm and pmap
+# instead of the KDK's closed per-SoC objects), so the machine config has to
+# name it.  parse_config() strips the CONFIG_ prefix and kernel.py:xnu_env()
+# exports XNU_MACHINE_CONFIG for scripts/build-xnu-4k-baseline.sh.
+#
+# Evidence: the arch series was written for a different OS generation and
+# rejects 12 of its own 56 patches on xnu-8796, so this device carries the
+# community series instead; see reports/STATUS.md 7.17.13.
+CONFIG_XNU_MACHINE_CONFIG="SWEET"
+
 # ---- OS profile switches ---------------------------------------------------
 CONFIG_XNU_TRUST_CACHE_RUNTIME=y
 CONFIG_XNU_SOURCE_MOCKFS=y

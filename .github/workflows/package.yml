@@ -30,9 +30,9 @@ on:
         type: string
         default: "main"
       mode:
-        description: "check = preflight + patches only; check-deps also fetches every module and the IPSW; kernel = compile and prelink XNU; firmware = EDK II build of Mu-Silicium with the UniXNU payload; bootimg = pack the firmware into a fastboot-boot image"
+        description: "check = preflight + patches only; check-deps also fetches every module and the IPSW; kernel = compile and prelink XNU; firmware = EDK II build of Mu-Silicium with the UniXNU payload; bootimg = pack the firmware into a fastboot-boot image; chain = the whole official chain (kernel, payload, firmware with the payload inside, boot image carrying it as ramdisk)"
         type: choice
-        options: ["check", "check-deps", "kernel", "firmware", "bootimg", "payload", "package"]
+        options: ["check", "check-deps", "kernel", "firmware", "bootimg", "payload", "package", "chain"]
         default: "check"
       xcode:
         description: "Xcode version of the macos-26 image"
@@ -125,7 +125,7 @@ jobs:
       # step: the run clones exactly what upstream already serves. Submodules are
       # left to firmware.py, which initialises the five names in board.toml.
       - name: Check out Mu-Silicium (firmware stage only)
-        if: inputs.mode == 'firmware' || inputs.mode == 'bootimg'
+        if: inputs.mode == 'firmware' || inputs.mode == 'bootimg' || inputs.mode == 'chain'
         uses: actions/checkout@v4
         with:
           repository: Project-Silicium/Mu-Silicium
@@ -138,7 +138,7 @@ jobs:
       # mapping and the UNIXNU_PAYLOAD switch as a patch, so the checkout stays
       # byte-identical to the pinned commit everywhere else.
       - name: Apply the UniXNU payload patch to Mu-Silicium
-        if: inputs.mode == 'firmware' || inputs.mode == 'bootimg'
+        if: inputs.mode == 'firmware' || inputs.mode == 'bootimg' || inputs.mode == 'chain'
         run: |
           set -euo pipefail
           patch=$PWD/device/firmware/mu-silicium-unixnu-integration.patch
@@ -225,7 +225,7 @@ jobs:
       # EDK II compiles the ACPI tables through iasl, which is not on the runner
       # image and is not part of BaseTools on macOS. Only the firmware stage needs it.
       - name: Install the firmware stage host tools
-        if: inputs.mode == 'firmware' || inputs.mode == 'bootimg'
+        if: inputs.mode == 'firmware' || inputs.mode == 'bootimg' || inputs.mode == 'chain'
         run: |
           brew install acpica
           iasl -v | head -n 2
@@ -403,6 +403,43 @@ jobs:
               sha256sum ../UniXNU/out/*/*/*/payload/payload.img
               ;;
 
+            chain)
+              # The whole official boot chain in one job, because each link is only
+              # meaningful with the next one present: the kernel becomes kernel.macho
+              # (skip-prelink: no 20H392 kernelcache to hash), the payload volume
+              # carries kernel.macho + kernel.macho.adt + unixnu.toml, the firmware
+              # volume gets UniXNU.efi/UniXNUDxe.efi/UniXNURamDiskDxe.efi/DarwinBoot
+              # through UNIXNU_PAYLOAD=1, and bootimg wraps shim+FD into a boot image
+              # whose ramdisk IS the payload volume - that ramdisk is what
+              # UniXNURamDiskDxe publishes as a FAT volume for UniXNU to read
+              # unixnu.toml from.  Layers 1-4 of the porting guide, no partition writes.
+              cd ../UniXNU
+              python3 ./unixnu fetch --device ../device
+              python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
+              python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE" --skip-prelink
+              python3 ./unixnu build payload --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium \
+                --unique-chip-id 0123456789abcdef
+              PAYLOAD=$(ls ../UniXNU/out/*/*/*/payload/payload.img)
+              test -f "$PAYLOAD" || { echo "::error::payload.img missing"; exit 1; }
+              sha256sum "$PAYLOAD"
+              cat ../UniXNU/out/*/*/*/payload/payload.json
+              python3 ./unixnu build firmware --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium --target RELEASE
+              FD=$(ls ../Mu-Silicium/Build/enchiladaPkg/*_CLANGPDB/FV/SILICIUM_UEFI.fd)
+              test -f "$FD" || { echo "::error::SILICIUM_UEFI.fd missing"; exit 1; }
+              sha256sum "$FD"
+              SHIM=$GITHUB_WORKSPACE/device/firmware/mu-silicium-bootshim-image-header.patch
+              sha256sum "$SHIM"
+              git -C ../Mu-Silicium apply --check "$SHIM"
+              git -C ../Mu-Silicium apply "$SHIM"
+              DTB=../Mu-Silicium/Resources/DTBs/enchilada.dtb
+              test -f "$DTB" || { echo "::error::Mu-Silicium firmware FDT missing: $DTB"; exit 1; }
+              sha256sum "$DTB"
+              python3 ./unixnu bootimg --device ../device --os "$OS_PROFILE" --uefi ../Mu-Silicium \
+                --fd "$FD" --dtb "$DTB" --ramdisk "$PAYLOAD" -o ../UniXNU/out/boot/boot.img
+              ls -l ../UniXNU/out/boot/
+              sha256sum ../UniXNU/out/boot/boot.img
+              cat ../UniXNU/out/boot/boot.json
+              ;;
             package)
               # Layer 3 of the porting guide: compile package/ (UniXNU.efi, UniXNUDxe.efi,
               # UniXNURamDiskDxe.efi) with EDK II.  This is the boot manager the guide
@@ -474,7 +511,7 @@ jobs:
           if-no-files-found: warn
           path: ${{ runner.temp }}/logs
       - name: Upload the boot image (bootimg mode only)
-        if: ${{ inputs.mode == 'bootimg' }}
+        if: ${{ inputs.mode == 'bootimg' || inputs.mode == 'chain' }}
         uses: actions/upload-artifact@v4
         with:
           name: boot-img-os-${{ inputs.os }}

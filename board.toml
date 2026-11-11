@@ -234,7 +234,14 @@ base = 0x0
 # ramdisk_size field of the boot_a header.  The real ceiling has never been
 # measured here, so this file does not rely on the 18 MiB figure for anything.
 volume = "system_b"
-size_mib = 144
+# The payload is the boot image ramdisk on the official route (UniXNURamDiskDxe
+# publishes the FAT volume from the FDT initrd), so it must fit the window the
+# bootloader actually maps.  The live FDT measures 0x841c9000-0x856fe8cb =
+# 21.21 MiB for the ramdisk THIS device boots; kernel.macho is 16,056,816 B and
+# the ADT 14,432 B, so 20 MiB holds both with room for the FAT itself.  The old
+# 144 MiB was sized for the community Route 2 payload, whose linked kernel was
+# ~120 MiB and shipped in system_b instead of the ramdisk.
+size_mib = 20
 loader = "firmware"
 title = "enchilada first boot: XNU to console"
 # scripts/unixnu/devicetree.py:306 reads payload.dram_size from the [payload] table

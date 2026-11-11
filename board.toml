@@ -299,6 +299,11 @@ kernel_args = [
 # attempt shows the faulting file and line instead of stopping silently.
 panic_screen = true
 
+# Stage 3 of the entry probe: once the MMU is on the frame buffer is not
+# mapped yet, so the only signal that the CPU got past the MMU enable is a
+# reboot after this many seconds.  Stage 1 (blue) and stage 2 (magenta) were
+# both painted on the panel, which proves the kernel entry ran.
+entry_probe_reset_delay = 5
 [payload.adt]
 # In schema 2 most of these keys are read from the merged board by
 # scripts/unixnu/devicetree.py; the ones that still matter are chip_id,

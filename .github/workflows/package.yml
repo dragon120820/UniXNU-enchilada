@@ -65,17 +65,25 @@ defaults:
 
 jobs:
   package:
-    # Pinned, and pinned per mode.  macos-latest moves between images; the EDK II
-    # stage is developed against the Xcode 26 line that macos-26 carries, but the
-    # XNU stage cannot use it: Xcode 26's iig emits IORPC.kernelContent, a field
-    # xnu-8796's IORPC does not have, and DriverKit/OSObject.iig.cpp fails with
-    # "no member named 'kernelContent' in 'IORPC'" (run 42875463977).  The kernel
-    # is built on macos-15, whose Xcode 16 line matches the community CI that
-    # builds this exact kernel.
-    runs-on: ${{ (inputs.mode == 'kernel' || inputs.mode == 'payload') && 'macos-15' || 'macos-26' }}
+    # Pinned, and pinned per mode.  macos-latest moves between images, so the
+    # EDK II stage keeps the Xcode 26 line that macos-26 carries.
+    #
+    # The XNU stage used to be pinned back to macos-15 (Xcode 16.4) because
+    # Xcode 26's iig emits IORPC.kernelContent, a field xnu-8796's IORPC did not
+    # have, and DriverKit/OSObject.iig.cpp failed with "no member named
+    # 'kernelContent' in 'IORPC'" (run 42875463977).  That is now fixed at the
+    # source: patches/xnu/iokitcpp-kernel-content.patch gives 8796 the field
+    # behind the same #ifdef KERNEL guard 10063 uses, so the XNU stage can run
+    # on the image whose toolchain the upstream scripts are written for.
+    #
+    # Going back to macos-15 is not an option for the rest of the pipeline
+    # either: Xcode 16.4's clang rejects flags the upstream helper scripts pass
+    # unconditionally, e.g. "-Wno-unnecessary-virtual-specifier"
+    # (run 42946585505, component-ArmDTPlatform).
+    runs-on: macos-26
     timeout-minutes: 240
     env:
-      DEVELOPER_DIR: /Applications/Xcode_${{ (inputs.mode == 'kernel' || inputs.mode == 'payload') && '16.4' || inputs.xcode }}.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_${{ inputs.xcode }}.app/Contents/Developer
       OS_PROFILE: ${{ inputs.os }}
       MODE: ${{ inputs.mode }}
 

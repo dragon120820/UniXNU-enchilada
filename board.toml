@@ -92,6 +92,11 @@ archives = [
 # reports/HARDWARE_INVENTORY.md), so the only values written here are the two
 # this board actually decides.  Do not add `roots` or `kernel` unless they are
 # being replaced on purpose: a placeholder there silently breaks the prelink step.
+# This port keeps the community Mach-O kernel: there is no 20H392 kernelcache to
+# static-prelink against and no Apple kext roots to graft on, so the XNU build is
+# staged unchanged (the workflow passes --skip-prelink).  prelink() still needs the
+# built kernel path to stage from, hence the one key written here.
+kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_SWEET/kernel.development.sweet"
 slide = "-0x1000000"
 early_security_init = "com.apple.driver.AppleMobileFileIntegrity=0xfffffff005ab4ae0"
 

@@ -311,7 +311,9 @@ jobs:
               # The kernel step needs a selected configuration; `defconfig` records it in
               # out/state.json, which `build kernel` then reads back.
               python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
-              python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE"
+              # --skip-prelink: see the payload branch.  The native kernel is what this
+              # port boots; there is no 20H392 kernelcache to hash against.
+              python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE" --skip-prelink
               ;;
             firmware)
               # First firmware build: EDK II compiles the UniXNU payload into Mu-Silicium's
@@ -382,7 +384,13 @@ jobs:
               cd ../UniXNU
               python3 ./unixnu fetch --device ../device
               python3 ./unixnu defconfig enchilada_defconfig --device ../device --os "$OS_PROFILE"
-              python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE"
+              # --skip-prelink stages the native kernel as kernel.macho.  Static prelink
+              # hashes the ORIGINAL Apple kernelcache and grafts its kexts on; this port
+              # keeps the community Mach-O kernel and has no 20H392 kernelcache, so the
+              # step would abort on the missing [kernel.prelink] kernelcache field
+              # (run 42954929695, KeyError at kernel.py:271).  stage_native() still
+              # checks the MH_EXECUTE/ARM64 header and records the digest.
+              python3 ./unixnu build kernel --device ../device --os "$OS_PROFILE" --skip-prelink
               # The ADT generator refuses a zero platform seed ("Platform identity
               # requires a nonzero u64 seed and u32 chip ID", devicetree.py:311-315),
               # so pass a nonzero placeholder.  This is a bring-up value: the ADT node

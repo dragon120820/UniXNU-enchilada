@@ -308,6 +308,10 @@ panic_screen = false
 # reboot after this many seconds.  Stage 1 (blue) and stage 2 (magenta) were
 # both painted on the panel, which proves the kernel entry ran.
 entry_probe_reset_delay = 5
+# Stage 4 replaces stage 3: the reset moves to just after the first call to
+# PE_init_platform inside _arm_init, so a reboot means PE_init_platform
+# returned (the device-tree platform expert started and finished).
+entry_probe_reset_after = "_PE_init_platform"
 [payload.adt]
 # In schema 2 most of these keys are read from the merged board by
 # scripts/unixnu/devicetree.py; the ones that still matter are chip_id,

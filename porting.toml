@@ -66,6 +66,8 @@ findings = ["Upstream registers all three enchilada repositories as format 1 leg
   "[LOCAL] The payload now also asks the entry probe for stage 3: after the MMU is on the frame buffer is not mapped, so a reboot five seconds later is the only signal that the CPU got through the MMU enable. Stage 1 (blue) and stage 2 (magenta) bands were both painted on the panel with the ADT that carries xiaomi,sweet, which proves the kernel entry code ran and narrows the failure to the interval between the MMU enable and the root mount.",
 
   "[LOCAL] panic_screen and stage 3 cannot both be installed: the probe reported the panic screen occupying 0xa1f bytes from 0xfffffff007404620 up to the end of the padding at 0xfffffff007404ff0, and run 43034417057 then failed to place the stage 3 cave. One instrument per run; stage 3 is the one that answers a yes/no question about the MMU.",
+
+  "[DEVICE] Stage 3 answered the MMU question: with the payload that carries no panic screen, the handset reset on its own and kept cycling, so the CPU executes the instruction that turns the MMU on. Stage 4 now moves the same reset to just after the first call to PE_init_platform in _arm_init (commit e4c84af plus this one), which asks whether the device-tree platform expert starts and returns.",
 ]
 completion = ["All source pins resolve; every selected component has a record; status shows the intended overrides and patch order."]
 limits = ["Blocked on a Linux or macOS build host (Windows native builds are unsupported) and on git for pinning."]

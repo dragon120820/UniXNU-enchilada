@@ -297,7 +297,11 @@ kernel_args = [
 # of kernel.macho: panic() and its common funnel are redirected to a freestanding
 # renderer that draws the formatted message on the frame buffer, so the next
 # attempt shows the faulting file and line instead of stopping silently.
-panic_screen = true
+# Off while stage 3 runs: the probe prints "panic screen is 0xa1f bytes at
+# 0xfffffff007404620, the padding ends at 0xfffffff007404ff0", i.e. the panic
+# screen alone overruns the whole cave and stage 3 has nowhere to go (run
+# 43034417057).  One instrument per run.
+panic_screen = false
 
 # Stage 3 of the entry probe: once the MMU is on the frame buffer is not
 # mapped yet, so the only signal that the CPU got past the MMU enable is a

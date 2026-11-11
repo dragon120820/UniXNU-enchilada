@@ -325,7 +325,13 @@ tool = "scripts/make-enchilada-adt.py"
 # Do not substitute the system_a GPT GUID (9F9B1E97-...) or the PARTUUID from
 # the Android command line: those identify a partition, not a root volume.
 root_match_volume_uuid = "04769D26-2CA0-4825-B443-E2E5F88300F2"
-owned_memory_size = "0x130000000"
+# XNU bootstrap page tables are BOOTSTRAP_TABLE_SIZE = 8 pages unless
+# ARM_LARGE_MEMORY is defined, and 8 pages covers 3 GiB (2 L1 + 6 L2).
+# 0x130000000 (4.75 GiB) needs 5 L2 tables per tree, so the KVA table was
+# written past the array and the kernel faulted the first time it touched a
+# kernel virtual address.  Keep this at 2 GiB until the large-memory path is
+# enabled on purpose.
+owned_memory_size = "0x80000000"
 # Why the DTS memory node is <0x0 0x80000000 0x1 0xfc8a0000>: it folds the two
 # DRAM banks the live FDT describes (0x80000000+4 GiB and 0x180000000+3.95 GiB)
 # into one run, because the generator requires exactly one contiguous range.  The

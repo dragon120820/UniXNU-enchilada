@@ -46,6 +46,11 @@ on:
         description: "Ref of the UniXNU checkout"
         type: string
         default: "main"
+      sec_entryarg:
+        description: "Hand the bootloader x0 to DXE through the SEC entry HOB (the stock SEC drops it); disable to bisect a firmware that never lights the panel"
+        type: choice
+        options: ["yes", "no"]
+        default: "yes"
 
 permissions:
   contents: read
@@ -169,12 +174,16 @@ jobs:
           # configuration and reports "no boot entry found" even when the
           # ramdisk is there. Same fault as marble, recorded in UniXNU's
           # docs/devices/marble-milacy.md; the fix follows uefi-fuxi.
-          secarg=$PWD/device/firmware/mu-silicium-sec-entryarg.patch
-          [ -f "$secarg" ] || { echo "::error::$secarg missing"; exit 1; }
-          sha256sum "$secarg"
-          git -C Mu-Silicium apply --check "$secarg"
-          git -C Mu-Silicium apply "$secarg"
-          git -C Mu-Silicium --no-pager diff --stat | tail -2
+          if [ "$SEC_ENTRYARG" = yes ]; then
+            secarg=$PWD/device/firmware/mu-silicium-sec-entryarg.patch
+            [ -f "$secarg" ] || { echo "::error::$secarg missing"; exit 1; }
+            sha256sum "$secarg"
+            git -C Mu-Silicium apply --check "$secarg"
+            git -C Mu-Silicium apply "$secarg"
+            git -C Mu-Silicium --no-pager diff --stat | tail -2
+          else
+            echo "sec entryarg: skipped on request; the payload volume will not be published"
+          fi
           # The PCD probe: DEBUG prints inside PcdDxe's entry path and inside
           # the PCD database loader, so the next boot says whether the driver
           # ran and whether GetSectionFromFfs found the database. firmware.py
@@ -277,6 +286,7 @@ jobs:
       - name: Preflight and patches
         working-directory: device
         env:
+          SEC_ENTRYARG: ${{ inputs.sec_entryarg }}
           UNIXNU_UNIQUE_CHIP_ID: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
           # scripts/prepare-xnu-source.py restores 26 DriverKit headers through the
           # GitHub contents API. Anonymous calls share a per-address quota that

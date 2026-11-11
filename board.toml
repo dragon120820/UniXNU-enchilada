@@ -286,6 +286,18 @@ kernel_args = [
   "rpmhtcs=0x179e0d00",
   "sweetfb_offy=156",
 ]
+# A panic before the root volume is mounted leaves no trace anywhere: the sweetlog
+# ring lives in the root volume's last blocks (patches/0047), so it cannot be
+# written until bsd_init has mounted the store, and nothing is drawn on the panel.
+# Every attempt that dies inside SweetPlatformExpert - i.e. whenever the root
+# compatible carries xiaomi,sweet (patches/0016) - therefore returns a blank
+# screen and an unchanged ring, so the bisection over the /arm-io children could
+# not point at a cause.  panic_screen makes payload.py run
+# patch-xnu-entry-probe.py --panic-screen (scripts/xnu-panic-screen.c) on a copy
+# of kernel.macho: panic() and its common funnel are redirected to a freestanding
+# renderer that draws the formatted message on the frame buffer, so the next
+# attempt shows the faulting file and line instead of stopping silently.
+panic_screen = true
 
 [payload.adt]
 # In schema 2 most of these keys are read from the merged board by

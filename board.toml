@@ -241,6 +241,44 @@ title = "enchilada first boot: XNU to console"
 # itself (not from [payload.adt]) and rejects any value that differs from the single
 # device_type="memory" range in the hardware DTS.  MUST stay in sync with the DTS.
 dram_size = "0x1fc8a0000"
+# The kernel command line the payload volume hands to DarwinBoot (payload.py:117
+# reads this list, joins it with spaces and refuses anything not matching
+# [A-Za-z0-9_.-]+(=[A-Za-z0-9_.,/\-:=]+)?, max 1000 bytes).  These are the values
+# this handset was actually brought up with: debug=0xc turns on the serial and
+# console debug paths, rd=ufsroot0 names the store, sweetlog=1 keeps the 4 MiB
+# ring in userdata that the shim reads back, sweetfb_offy=156 is the framebuffer
+# offset that puts the home indicator inside the panel, and rpmhrsc/rpmhtcs give
+# the RPMh message/RCS windows.  Rebuilt payload without them boots with an empty
+# command line: no console, no log ring, no root volume (run 42957359561 emitted
+# args = "" for exactly this reason).
+kernel_args = [
+  "debug=0xc",
+  "serial=3",
+  "cpus=8",
+  "sweetsmp=1",
+  "keepsyms=1",
+  "-noprogress",
+  "nointr_consio=1",
+  "rd=ufsroot0",
+  "unentitled_ios_sim_launch=1",
+  "ignition_level=1",
+  "wdt_test=no_user_checkin",
+  "ufsrw=1",
+  "rootrw=1",
+  "launchd_unsecure_cache=1",
+  "wdt=-1",
+  "sweetfb_hz=10",
+  "sweetecon=1",
+  "sweetfb_noconsole=1",
+  "sweetlog=1",
+  "sweettouch=1",
+  "sweetts=1",
+  "sweettouchdelay=20",
+  "sweetkeys=1",
+  "rpmhrsc=0x179e0000",
+  "rpmhtcs=0x179e0d00",
+  "sweetfb_offy=156",
+]
 
 [payload.adt]
 # In schema 2 most of these keys are read from the merged board by

@@ -350,6 +350,13 @@ unique_chip_id = "required"
 cpu_regs = "0,0x100,0x200,0x300,0x400,0x500,0x600,0x700"
 psci_method = "smc"
 
+# Early SWEET pe_fiq uses /arm-io/gic; late ArmCpu uses /arm-io/intc.
+# This register-only view is excluded from platform nubs by SWEET createNubs.
+# Preserve intc, its phandle, interrupt-parent and u64 redistributor-stride.
+# Host regression MUST compare this reg to generated intc.reg byte-for-byte.
+[adt.arm-io.gic.bytes]
+reg = "0000a0160000000000000100000000000000a616000000000000100000000000"
+
 [package]
 # scripts/package.sh reads this key to find the UniXNU checkout.  It is a path
 # relative to this repository, so a sibling layout (device repo and UniXNU next

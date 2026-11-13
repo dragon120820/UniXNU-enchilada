@@ -315,6 +315,9 @@ entry_probe_reset_delay = 0
 # returned (the device-tree platform expert started and finished).
 # entry_probe_reset_after = "_PE_init_platform"
 [payload.adt]
+# SWEET.h uses NO_ECORE=1 and one logical SMP cluster. Preserve physical
+# E/P data in the hardware DTS but do not feed Apple AMP classes to this kernel.
+cpu_topology = "smp"
 # In schema 2 most of these keys are read from the merged board by
 # scripts/unixnu/devicetree.py; the ones that still matter are chip_id,
 # unique_chip_id, owned_memory_size, root_match_volume_uuid and the two

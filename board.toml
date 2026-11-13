@@ -96,7 +96,8 @@ archives = [
 # static-prelink against and no Apple kext roots to graft on, so the XNU build is
 # staged unchanged (the workflow passes --skip-prelink).  prelink() still needs the
 # built kernel path to stage from, hence the one key written here.
-kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_SWEET/kernel.development.sweet"
+# PLATFORM=iPhoneOS uses the upstream mach prefix even with SDKROOT=macosx.
+kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_SWEET/mach.development.sweet"
 slide = "-0x1000000"
 early_security_init = "com.apple.driver.AppleMobileFileIntegrity=0xfffffff005ab4ae0"
 

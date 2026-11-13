@@ -18,7 +18,13 @@ CONFIG_XNU_ARM_DT_PLATFORM=y
 CONFIG_XNU_ARMCPU=y
 CONFIG_XNU_SOURCE_CORECRYPTO14=y
 CONFIG_XNU_SOURCE_PTHREAD=y
-CONFIG_XNU_NATIVE_AES=y
+# [LOCAL] SoftwareAES requires a qualified mapped Apple IOAESAccelerator
+# parent, absent in this native-only SWEET image. Override arch common.config
+# explicitly: deselecting only the recipe could still force-load a stale .a.
+# SWEET AES CBC and early bootseed initialization remain; patch0208 selects
+# one real PRNG provider. This does not establish Apple keybag/SEP protection
+# or prove the complete crypto table before build/runtime validation.
+CONFIG_XNU_NATIVE_AES=n
 CONFIG_XNU_NATIVE_ARCH_TIMER=y
 CONFIG_XNU_NATIVE_PAN=y
 CONFIG_XNU_BUILD_ARCHIVES=y
@@ -62,7 +68,11 @@ CONFIG_XNU_KERNEL_PLATFORM="iPhoneOS"
 CONFIG_XNU_TRUST_CACHE_RUNTIME=y
 CONFIG_XNU_SOURCE_MOCKFS=y
 CONFIG_XNU_NATIVE_CS_HASH_CACHE=y
-CONFIG_XNU_CRYPTO_BOOTSTRAP="prelinked"
+# Native-only has no Apple corecrypto OSKext to start. Use the actual software
+# provider with default POST and final-image HMAC sealing. Patch0208 makes its
+# startup mutually exclusive with the community PRNG and preserves bootseed init.
+# This is software crypto evaluation, not hardware UID/SEP or keybag equivalence.
+CONFIG_XNU_CRYPTO_BOOTSTRAP="source"
 
 # ---- stage 1 is a console-only bring-up ------------------------------------
 # P5 stops at K4 "reached the root device and waits".  Nothing that needs a

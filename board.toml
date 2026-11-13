@@ -23,7 +23,10 @@ example = false
 include = [
   "ArmCpu",
   "ArmDTPlatform",
-  "SoftwareAES",
+  # [LOCAL] Native-only SWEET has no mapped IOAESAccelerator parent. Do not
+  # select its prelink-only adapter or recorded-address binding generator.
+  # SWEET BearSSL CBC remains; patch0208 gives the real source provider unique
+  # PRNG ownership while retaining early bootseed initialization.
   "XnuPrelink",
   "DarwinBoot",
   "RamBlock",
@@ -76,8 +79,6 @@ archives = [
   "build-corecrypto-14.py --namespace",
   "component:ArmDTPlatform",
   "component:ArmCpu",
-  "component:SoftwareAES",
-  "build-software-aes-bindings.py",
   "build-mockfs-fixture.py",
   "build-libpthread-kernel.py",
   "component:RamBlock",

@@ -486,6 +486,17 @@ jobs:
 
           esac
 
+      - name: Upload the native kernel (kernel mode only)
+        if: inputs.mode == 'kernel'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unixnu-kernel-${{ inputs.os }}
+          retention-days: 7
+          path: |
+            UniXNU/out/*/*/*/kernel/kernel.macho
+            UniXNU/out/*/*/*/kernel/kernel.json
+          if-no-files-found: error
+
       - name: Upload the payload (payload mode only)
         if: inputs.mode == 'payload'
         uses: actions/upload-artifact@v4

@@ -307,11 +307,13 @@ panic_screen = false
 # mapped yet, so the only signal that the CPU got past the MMU enable is a
 # reboot after this many seconds.  Stage 1 (blue) and stage 2 (magenta) were
 # both painted on the panel, which proves the kernel entry ran.
-entry_probe_reset_delay = 5
+# Explicitly disable the completed stage-4 reset experiment for local AND CI builds.
+# A value of 5 inserts PSCI SYSTEM_RESET after PE_init_platform and bypasses mark 2.
+entry_probe_reset_delay = 0
 # Stage 4 replaces stage 3: the reset moves to just after the first call to
 # PE_init_platform inside _arm_init, so a reboot means PE_init_platform
 # returned (the device-tree platform expert started and finished).
-entry_probe_reset_after = "_PE_init_platform"
+# entry_probe_reset_after = "_PE_init_platform"
 [payload.adt]
 # In schema 2 most of these keys are read from the merged board by
 # scripts/unixnu/devicetree.py; the ones that still matter are chip_id,

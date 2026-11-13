@@ -50,6 +50,14 @@ CONFIG_XNU_MACHINE_CONFIG="SWEET"
 # blacktop/darwin-xnu-build use for their own iOS kernels.
 CONFIG_XNU_SDKROOT="macosx"
 
+# SDK choice must not silently switch the kernel's memory/platform policy.
+# MakeInc.cmd otherwise derives MacOSX from this SDK and MakeInc.def emits
+# XNU_PLATFORM_MacOSX alongside the explicit XNU_TARGET_OS_IOS deployment flag.
+# The resulting 128 GiB zones claim cannot fit this 112 GiB kernel VA map.
+# Select the real iOS platform coherently for all ZONE_MAP_* consumers; do not
+# patch only the registered claim or remove allocator checks.
+CONFIG_XNU_KERNEL_PLATFORM="iPhoneOS"
+
 # ---- OS profile switches ---------------------------------------------------
 CONFIG_XNU_TRUST_CACHE_RUNTIME=y
 CONFIG_XNU_SOURCE_MOCKFS=y

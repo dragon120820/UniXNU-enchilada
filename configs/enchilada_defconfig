@@ -104,3 +104,6 @@ CONFIG_XNU_CRYPTO_BOOTSTRAP="source"
 # profile's built-in value; fill both when the root images are produced.
 # CONFIG_XNU_OWNER_DATA_VOLUME_UUID="00000000-0000-0000-0000-000000000000"
 # CONFIG_XNU_OWNER_CACHE_VOLUME_UUID="00000000-0000-0000-0000-000000000000"
+
+# SDK-only experiment: NULL policy supplier fails closed before MMIO.
+CONFIG_XNU_SWEET_MERKLE_ROOT=y

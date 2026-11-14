@@ -486,6 +486,20 @@ jobs:
 
           esac
 
+      - name: Capture actual SWEET SDK compiler inputs and objects
+        if: always() && inputs.mode == 'kernel'
+        run: |
+          python3 device/tools/capture_merkle_sdk0235.py --root UniXNU/out --out "$RUNNER_TEMP/sweet-sdk-records"
+
+      - name: Upload actual SWEET SDK compiler evidence
+        if: always() && inputs.mode == 'kernel'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sweet-sdk-compile-${{ inputs.os }}
+          retention-days: 7
+          path: ${{ runner.temp }}/sweet-sdk-records
+          if-no-files-found: error
+
       - name: Upload the native kernel (kernel mode only)
         if: inputs.mode == 'kernel'
         uses: actions/upload-artifact@v4

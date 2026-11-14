@@ -17,7 +17,10 @@
 CONFIG_XNU_ARM_DT_PLATFORM=y
 CONFIG_XNU_ARMCPU=y
 CONFIG_XNU_SOURCE_CORECRYPTO14=y
-CONFIG_XNU_SOURCE_PTHREAD=y
+# SWEET/8796 already compiles the matching 514.100.2 provider and real startup.
+# Override the arch archive switch to avoid duplicate callback registration.
+CONFIG_XNU_SOURCE_PTHREAD=n
+CONFIG_XNU_BUILTIN_SWEET_PTHREAD=y
 # [LOCAL] SoftwareAES requires a qualified mapped Apple IOAESAccelerator
 # parent, absent in this native-only SWEET image. Override arch common.config
 # explicitly: deselecting only the recipe could still force-load a stale .a.
